@@ -14916,27 +14916,22 @@ var CalcPrDef = [
 	['refMode', 'A1']
 ];
 
-/* 18.2.3 (CT_CustomWorkbookView) Defaults */
-/*var CustomWBViewDef = [
-	['autoUpdate', 'false'],
-	['changesSavedWin', 'false'],
-	['includeHiddenRowCol', 'true'],
-	['includePrintSettings', 'true'],
-	['maximized', 'false'],
-	['minimized', 'false'],
-	['onlySync', 'false'],
-	['personalView', 'false'],
-	['showComments', 'commIndicator'],
-	['showFormulaBar', 'true'],
-	['showHorizontalScroll', 'true'],
-	['showObjects', 'all'],
-	['showSheetTabs', 'true'],
-	['showStatusbar', 'true'],
-	['showVerticalScroll', 'true'],
-	['tabRatio', '600'],
-	['xWindow', '0'],
-	['yWindow', '0']
-];*/
+function write_sty_xml(wb, opts) {
+
+  if (typeof style_builder != 'undefined' && typeof 'require' != 'undefined') {
+    return style_builder.toXml();
+  }
+
+	var o = [XML_HEADER, STYLES_XML_ROOT], w;
+	if((w = write_numFmts(wb.SSF)) != null) o[o.length] = w;
+	o[o.length] = ('<fonts count="1"><font><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>');
+	o[o.length] = ('<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>');
+	o[o.length] = ('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>');
+	o[o.length] = ('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
+	if((w = write_cellXfs(opts.cellXfs))) o[o.length] = (w);
+	o[o.length] = ('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');
+	o[o.length] = ('<dxfs count="0"/>');
+	o[o.length] = ('<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>');
 
 function push_defaults_array(target, defaults) {
 	for(var j = 0; j != target.length; ++j) { var w = target[j];
@@ -20876,6 +20871,7 @@ f = "docProps/app.xml";
 
 	f = "xl/theme/theme1.xml";
 	zip_add_file(zip, f, write_theme(wb.Themes, opts));
+  zip.file(f, write_theme(opts));
 	ct.themes.push(f);
 	add_rels(opts.wbrels, -1, "theme/theme1.xml", RELS.THEME);
 
@@ -21520,150 +21516,347 @@ utils.cell_add_comment = function(cell, text, author) {
 	cell.c.push({t:text, a:author||"SheetJS"});
 };
 
-/* set array formula and flush related cells */
-utils.sheet_set_array_formula = function(ws, range, formula) {
-	var rng = typeof range != "string" ? range : safe_decode_range(range);
-	var rngstr = typeof range == "string" ? range : encode_range(range);
-	for(var R = rng.s.r; R <= rng.e.r; ++R) for(var C = rng.s.c; C <= rng.e.c; ++C) {
-		var cell = ws_get_cell_stub(ws, R, C);
-		cell.t = 'n';
-		cell.F = rngstr;
-		delete cell.v;
-		if(R == rng.s.r && C == rng.s.c) cell.f = formula;
-	}
-	return ws;
-};
+if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeof $ != 'undefined')) {
+  var StyleBuilder = function (options) {
 
-return utils;
-})(utils);
+    if(typeof module !== "undefined" && typeof require !== 'undefined' ) {
+      var cheerio = require('cheerio');
+      createElement = function(str) { return cheerio(cheerio(str, null, null, {xmlMode: true})); };
+    }
+    else if (typeof jQuery !== 'undefined' || typeof $ !== 'undefined') {
+      createElement = function(str) { return $(str); }
+    }
+    else {
+      createElement = function() { }
+    }
 
-if(has_buf && typeof require != 'undefined') (function() {
-	var Readable = require('stream').Readable;
 
-	var write_csv_stream = function(sheet, opts) {
-		var stream = Readable();
-		var o = opts == null ? {} : opts;
-		if(sheet == null || sheet["!ref"] == null) { stream.push(null); return stream; }
-		var r = safe_decode_range(sheet["!ref"]);
-		var FS = o.FS !== undefined ? o.FS : ",", fs = FS.charCodeAt(0);
-		var RS = o.RS !== undefined ? o.RS : "\n", rs = RS.charCodeAt(0);
-		var endregex = new RegExp((FS=="|" ? "\\|" : FS)+"+$");
-		var row = "", cols = [];
-		o.dense = Array.isArray(sheet);
-		var colinfo = o.skipHidden && sheet["!cols"] || [];
-		var rowinfo = o.skipHidden && sheet["!rows"] || [];
-		for(var C = r.s.c; C <= r.e.c; ++C) if (!((colinfo[C]||{}).hidden)) cols[C] = encode_col(C);
-		var R = r.s.r;
-		var BOM = false;
-		stream._read = function() {
-			if(!BOM) { BOM = true; return stream.push("\uFEFF"); }
-			while(R <= r.e.r) {
-				++R;
-				if ((rowinfo[R-1]||{}).hidden) continue;
-				row = make_csv_row(sheet, r, R-1, cols, fs, rs, FS, o);
-				if(row != null) {
-					if(o.strip) row = row.replace(endregex,"");
-					stream.push(row + RS);
-					break;
-				}
-			}
-			if(R > r.e.r) return stream.push(null);
-		};
-		return stream;
-	};
+    var customNumFmtId = 164;
 
-	var write_html_stream = function(ws, opts) {
-		var stream = Readable();
 
-		var o = opts || {};
-		var header = o.header != null ? o.header : HTML_.BEGIN;
-		var footer = o.footer != null ? o.footer : HTML_.END;
-		stream.push(header);
-		var r = decode_range(ws['!ref']);
-		o.dense = Array.isArray(ws);
-		stream.push(HTML_._preamble(ws, r, o));
-		var R = r.s.r;
-		var end = false;
-		stream._read = function() {
-			if(R > r.e.r) {
-				if(!end) { end = true; stream.push("</table>" + footer); }
-				return stream.push(null);
-			}
-			while(R <= r.e.r) {
-				stream.push(HTML_._row(ws, r, R, o));
-				++R;
-				break;
-			}
-		};
-		return stream;
-	};
+    var table_fmt = {
+      0:  'General',
+      1:  '0',
+      2:  '0.00',
+      3:  '#,##0',
+      4:  '#,##0.00',
+      9:  '0%',
+      10: '0.00%',
+      11: '0.00E+00',
+      12: '# ?/?',
+      13: '# ??/??',
+      14: 'm/d/yy',
+      15: 'd-mmm-yy',
+      16: 'd-mmm',
+      17: 'mmm-yy',
+      18: 'h:mm AM/PM',
+      19: 'h:mm:ss AM/PM',
+      20: 'h:mm',
+      21: 'h:mm:ss',
+      22: 'm/d/yy h:mm',
+      37: '#,##0 ;(#,##0)',
+      38: '#,##0 ;[Red](#,##0)',
+      39: '#,##0.00;(#,##0.00)',
+      40: '#,##0.00;[Red](#,##0.00)',
+      45: 'mm:ss',
+      46: '[h]:mm:ss',
+      47: 'mmss.0',
+      48: '##0.0E+0',
+      49: '@',
+      56: '"上午/下午 "hh"時"mm"分"ss"秒 "',
+      65535: 'General'
+    };
+    var fmt_table = {};
 
-	var write_json_stream = function(sheet, opts) {
-		var stream = Readable({objectMode:true});
+    for (var idx in table_fmt) {
+      fmt_table[table_fmt[idx]] = idx;
 
-		if(sheet == null || sheet["!ref"] == null) { stream.push(null); return stream; }
-		var val = {t:'n',v:0}, header = 0, offset = 1, hdr = [], v=0, vv="";
-		var r = {s:{r:0,c:0},e:{r:0,c:0}};
-		var o = opts || {};
-		var range = o.range != null ? o.range : sheet["!ref"];
-		if(o.header === 1) header = 1;
-		else if(o.header === "A") header = 2;
-		else if(Array.isArray(o.header)) header = 3;
-		switch(typeof range) {
-			case 'string': r = safe_decode_range(range); break;
-			case 'number': r = safe_decode_range(sheet["!ref"]); r.s.r = range; break;
-			default: r = range;
-		}
-		if(header > 0) offset = 0;
-		var rr = encode_row(r.s.r);
-		var cols = [];
-		var counter = 0;
-		var dense = Array.isArray(sheet);
-		var R = r.s.r, C = 0, CC = 0;
-		if(dense && !sheet[R]) sheet[R] = [];
-		for(C = r.s.c; C <= r.e.c; ++C) {
-			cols[C] = encode_col(C);
-			val = dense ? sheet[R][C] : sheet[cols[C] + rr];
-			switch(header) {
-				case 1: hdr[C] = C - r.s.c; break;
-				case 2: hdr[C] = cols[C]; break;
-				case 3: hdr[C] = o.header[C - r.s.c]; break;
-				default:
-					if(val == null) val = {w: "__EMPTY", t: "s"};
-					vv = v = format_cell(val, null, o);
-					counter = 0;
-					for(CC = 0; CC < hdr.length; ++CC) if(hdr[CC] == vv) vv = v + "_" + (++counter);
-					hdr[C] = vv;
-			}
-		}
-		R = r.s.r + offset;
-		stream._read = function() {
-			if(R > r.e.r) return stream.push(null);
-			while(R <= r.e.r) {
-				//if ((rowinfo[R-1]||{}).hidden) continue;
-				var row = make_json_row(sheet, r, R, cols, header, hdr, dense, o);
-				++R;
-				if((row.isempty === false) || (header === 1 ? o.blankrows !== false : !!o.blankrows)) {
-					stream.push(row.row);
-					break;
-				}
-			}
-		};
-		return stream;
-	};
+    }
 
-	XLSX.stream = {
-		to_json: write_json_stream,
-		to_html: write_html_stream,
-		to_csv: write_csv_stream
-	};
-})();
 
-if(typeof parse_xlscfb !== "undefined") XLSX.parse_xlscfb = parse_xlscfb;
-XLSX.parse_zip = parse_zip;
-XLSX.read = readSync; //xlsread
-XLSX.readFile = readFileSync; //readFile
-XLSX.readFileSync = readFileSync;
+    var baseXmlprefix = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>';
+    var baseXml =
+        '<styleSheet xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" xmlns:x14ac="http://schemas.microsoft.com/office/spreadsheetml/2009/9/ac"\
+        xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" mc:Ignorable="x14ac">\
+            <numFmts count="1">\
+              <numFmt numFmtId="164" formatCode="0.00%"/>\
+            </numFmts>\
+            <fonts count="0" x14ac:knownFonts="1"></fonts>\
+            <fills count="0"></fills>\
+            <borders count="0"></borders>\
+            <cellStyleXfs count="1">\
+            <xf numFmtId="0" fontId="0" fillId="0" borderId="0"/>\
+            </cellStyleXfs>\
+            <cellXfs count="0"></cellXfs>\
+            <cellStyles count="1">\
+              <cellStyle name="Normal" xfId="0" builtinId="0"/>\
+            </cellStyles>\
+            <dxfs count="0"/>\
+            <tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>\
+        </styleSheet>';
+
+    _hashIndex = {};
+    _listIndex = [];
+
+    return {
+
+      initialize: function (options) {
+        if (typeof cheerio !== 'undefined') {
+          this.$styles = cheerio.load(baseXml, {xmlMode: true});
+          this.$styles.find = function(q) { return this(q)}
+        }
+        else {
+          this.$styles = $(baseXml);
+        }
+
+
+        // need to specify styles at index 0 and 1.
+        // the second style MUST be gray125 for some reason
+
+        var defaultStyle = options.defaultCellStyle;
+        if (!defaultStyle) defaultStyle = {
+          font: {name: 'Calibri', sz: '11'},
+          fill: { fgColor: { patternType: "none"}},
+          border: {},
+          numFmt: null
+        };
+        if (!defaultStyle.border) { defaultStyle.border = {}}
+
+        var gray125Style = JSON.parse(JSON.stringify(defaultStyle));
+        gray125Style.fill = { fgColor: { patternType: "gray125"}}
+
+        this.addStyles([defaultStyle, gray125Style]);
+        return this;
+      },
+
+      // create a style entry and returns an integer index that can be used in the cell .s property
+      // these format of this object follows the emerging Common Spreadsheet Format
+      addStyle: function (attributes) {
+        var attributes = this._duckTypeStyle(attributes);
+        var hashKey = JSON.stringify(attributes);
+        var index = _hashIndex[hashKey];
+        if (index == undefined) {
+          index = this._addXf(attributes || {});
+          _hashIndex[hashKey] = index;
+
+        }
+        else {
+          index = _hashIndex[hashKey];
+        }
+        return index;
+      },
+
+      // create style entries and returns array of integer indexes that can be used in cell .s property
+      addStyles: function (styles) {
+        var self = this;
+        return styles.map(function (style) {
+          return self.addStyle(style);
+        })
+      },
+
+      _duckTypeStyle: function(attributes) {
+
+        if (typeof attributes == 'object' && (attributes.patternFill || attributes.fgColor)) {
+          return {fill: attributes }; // this must be read via XLSX.parseFile(...)
+        }
+        else if (attributes.font || attributes.numFmt || attributes.border || attributes.fill) {
+          return attributes;
+        }
+        else {
+          return this._getStyleCSS(attributes)
+        }
+      },
+
+      _getStyleCSS: function(css) {
+        return css; //TODO
+      },
+
+      // Create an <xf> record for the style as well as corresponding <font>, <fill>, <border>, <numfmts>
+      // Right now this is simple and creates a <font>, <fill>, <border>, <numfmts> for every <xf>
+      // We could perhaps get fancier and avoid duplicating  auxiliary entries as Excel presumably intended, but bother.
+      _addXf: function (attributes) {
+
+
+        var fontId = this._addFont(attributes.font);
+        var fillId = this._addFill(attributes.fill);
+        var borderId = this._addBorder(attributes.border);
+        var numFmtId = this._addNumFmt(attributes.numFmt);
+
+        var $xf = createElement('<xf></xf>')
+            .attr("numFmtId", numFmtId)
+            .attr("fontId", fontId)
+            .attr("fillId", fillId)
+            .attr("borderId", 0)
+            .attr("xfId", "0");
+
+        if (fontId > 0) {
+          $xf.attr('applyFont', "1");
+        }
+        if (fillId > 0) {
+          $xf.attr('applyFill', "1");
+        }
+        if (borderId > 0) {
+          $xf.attr('applyBorder', "1");
+        }
+        if (numFmtId > 0) {
+          $xf.attr('applyNumberFormat', "1");
+        }
+
+
+        var $cellXfs = this.$styles.find('cellXfs');
+
+        $cellXfs.append($xf);
+        var count = +$cellXfs.attr('count') + 1;
+
+        $cellXfs.attr('count', count);
+        return count - 1;
+      },
+
+      _addFont: function (attributes) {
+        if (!attributes) {
+          return 0;
+        }
+
+        var $font = createElement('<font/>', null, null, {xmlMode: true});
+
+        $font.append(createElement('<sz/>').attr('val', attributes.sz))
+            .append(createElement('<color/>').attr('theme', '1'))
+            .append(createElement('<name/>').attr('val', attributes.name))
+//              .append(createElement('<family/>').attr('val', '2'))
+//              .append(createElement('<scheme/>').attr('val', 'minor'));
+
+        if (attributes.bold) $font.append('<b/>');
+        if (attributes.underline) $font.append('<u/>');
+        if (attributes.italic) $font.append('<i/>');
+
+        if (attributes.color) {
+          if (attributes.color.theme) {
+            $font.append(createElement('<color/>').attr('theme', attributes.color.theme));
+          } else if (attributes.color.rgb) {
+            $font.append(createElement('<color/>').attr('rgb', attributes.color.rgb));
+          }
+        }
+
+
+        var $fonts = this.$styles.find('fonts');
+        $fonts.append($font);
+
+        var count = $fonts.children().length;
+        $fonts.attr('count', count);
+        return count - 1;
+      },
+
+      _addNumFmt: function (numFmt) {
+        if (!numFmt) {
+          return 0;
+        }
+
+        if (typeof numFmt == 'string') {
+          var numFmtIdx = fmt_table[numFmt];
+          if (numFmtIdx >= 0) {
+            return numFmtIdx; // we found a match against built in formats
+          }
+        }
+
+        if (numFmt == +numFmt) {
+          return numFmt; // we're matching an integer against some known code
+        }
+
+        var $numFmt = createElement('<numFmt/>', null, null, {xmlMode: true})
+            .attr("numFmtId", ++customNumFmtId )
+            .attr("formatCode", numFmt);
+
+        var $numFmts = this.$styles.find('numFmts');
+        $numFmts.append($numFmt);
+
+        var count = $numFmts.children().length;
+        $numFmts.attr('count', count);
+        return customNumFmtId;
+      },
+
+      _addFill: function (attributes) {
+
+        if (!attributes) {
+          return 0;
+        }
+        var $patternFill = createElement('<patternFill></patternFill>', null, null, {xmlMode: true})
+            .attr('patternType', attributes.patternType || 'solid');
+
+        if (attributes.fgColor) {
+          //Excel doesn't like it when we set both rgb and theme+tint, but xlsx.parseFile() sets both
+          //var $fgColor = createElement('<fgColor/>', null, null, {xmlMode: true}).attr(attributes.fgColor)
+          if (attributes.fgColor.rgb) {
+
+            if (attributes.fgColor.rgb.length == 6) {
+              attributes.fgColor.rgb = "FF" + attributes.fgColor.rgb /// add alpha to an RGB as Excel expects aRGB
+            }
+            var $fgColor = createElement('<fgColor/>', null, null, {xmlMode: true}).
+                attr('rgb', attributes.fgColor.rgb);
+            $patternFill.append($fgColor);
+          }
+          else if (attributes.fgColor.theme) {
+            var $fgColor = createElement('<fgColor/>', null, null, {xmlMode: true});
+            $fgColor.attr('theme', attributes.fgColor.theme);
+            if (attributes.fgColor.tint) {
+              $fgColor.attr('tint', attributes.fgColor.tint);
+            }
+            $patternFill.append($fgColor);
+          }
+
+          if (!attributes.bgColor) {
+            attributes.bgColor = { "indexed": "64"}
+          }
+        }
+
+        if (attributes.bgColor) {
+          var $bgColor = createElement('<bgColor/>', null, null, {xmlMode: true}).attr(attributes.bgColor);
+          $patternFill.append($bgColor);
+        }
+
+        var $fill = createElement('<fill></fill>')
+            .append($patternFill);
+
+        this.$styles.find('fills').append($fill);
+        var $fills = this.$styles.find('fills')
+        $fills.append($fill);
+
+        var count = $fills.children().length;
+        $fills.attr('count', count);
+        return count - 1;
+      },
+
+      _addBorder: function (attributes) {
+        if (!attributes) {
+          return 0;
+        }
+        var $border = createElement('<border></border>')
+            .append('<left></left>')
+            .append('<right></right>')
+            .append('<top></top>')
+            .append('<bottom></bottom>')
+            .append('<diagonal></diagonal>');
+
+        var $borders = this.$styles.find('borders');
+        $borders.append($border);
+
+        var count = $borders.children().length;
+        $borders.attr('count', count);
+        return count;
+      },
+
+      toXml: function () {
+        if (this.$styles.find('numFmts').children().length == 0) {
+          this.$styles.find('numFmts').remove();
+        }
+        if (this.$styles.xml) { return this.$styles.xml(); }
+        else { return baseXmlprefix + this.$styles.html(); }
+      }
+    }.initialize(options||{});
+  }
+}
+XLSX.parseZip = parse_zip;
+XLSX.read = readSync;
+XLSX.readFile = readFileSync;
 XLSX.write = writeSync;
 XLSX.writeFile = writeFileSync;
 XLSX.writeFileSync = writeFileSync;
