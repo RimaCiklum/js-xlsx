@@ -20931,8 +20931,17 @@ function read_plaintext(data, o) {
 	return PRN.to_workbook(data, o);
 }
 
-function read_plaintext_raw(data, o) {
-	var str = "", bytes = firstbyte(data, o);
+function writeSync(wb, opts) {
+	var o = opts||{};
+
+  if (typeof module != 'undefined' && typeof 'require' != 'undefined') {
+    style_builder  = new StyleBuilder(opts);
+  }
+  else if  (typeof $ != 'undefined' || typeof 'jQuery' != 'undefined') {
+    style_builder  = new StyleBuilder(opts);
+  }
+
+  var z = write_zip(wb, o);
 	switch(o.type) {
 		case 'base64': str = Base64.decode(data); break;
 		case 'binary': str = data; break;
@@ -20952,31 +20961,10 @@ function read_utf16(data, o) {
 	return read_plaintext(d, o);
 }
 
-function bstrify(data) {
-	return !data.match(/[^\x00-\x7F]/) ? data : utf8write(data);
-}
-
-function read_prn(data, d, o, str) {
-	if(str) { o.type = "string"; return PRN.to_workbook(data, o); }
-	return PRN.to_workbook(d, o);
-}
-
-function readSync(data, opts) {
-	reset_cp();
-	if(typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) return readSync(new Uint8Array(data), opts);
-	var d = data, n = [0,0,0,0], str = false;
-	var o = opts||{};
-	if(o.cellStyles) { o.cellNF = true; o.sheetStubs = true; }
-	_ssfopts = {};
-	if(o.dateNF) _ssfopts.dateNF = o.dateNF;
-	if(!o.type) o.type = (has_buf && Buffer.isBuffer(data)) ? "buffer" : "base64";
-	if(o.type == "file") { o.type = has_buf ? "buffer" : "binary"; d = read_binary(data); }
-	if(o.type == "string") { str = true; o.type = "binary"; o.codepage = 65001; d = bstrify(data); }
-	if(o.type == 'array' && typeof Uint8Array !== 'undefined' && data instanceof Uint8Array && typeof ArrayBuffer !== 'undefined') {
-		// $FlowIgnore
-		var ab=new ArrayBuffer(3), vu=new Uint8Array(ab); vu.foo="bar";
-		// $FlowIgnore
-		if(!vu.foo) {o=dup(o); o.type='array'; return readSync(ab2a(d), o);}
+	o.file = filename;
+	switch(o.file.substr(-5).toLowerCase()) {
+		case '.xlsm': o.bookType = 'xlsm'; break;
+		case '.xlsb': o.bookType = 'xlsb'; break;
 	}
 	switch((n = firstbyte(d, o))[0]) {
 		case 0xD0: if(n[1] === 0xCF && n[2] === 0x11 && n[3] === 0xE0 && n[4] === 0xA1 && n[5] === 0xB1 && n[6] === 0x1A && n[7] === 0xE1) return read_cfb(CFB.read(d, o), o); break;
@@ -21524,10 +21512,12 @@ if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeo
       createElement = function(str) { return cheerio(cheerio(str, null, null, {xmlMode: true})); };
     }
     else if (typeof jQuery !== 'undefined' || typeof $ !== 'undefined') {
-      createElement = function(str) { return $(str); }
+      createElement = function(str) {
+        return $($.parseXML(str).documentElement);
+      } //http://stackoverflow.com/a/11719466
     }
     else {
-      createElement = function() { }
+      createElement = function() { } // this class should never have been instantiated
     }
 
 
@@ -21606,7 +21596,7 @@ if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeo
           this.$styles.find = function(q) { return this(q)}
         }
         else {
-          this.$styles = $(baseXml);
+          this.$styles = $($.parseXML(baseXml).documentElement);
         }
 
 
@@ -21858,7 +21848,10 @@ if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeo
           this.$styles.find('numFmts').remove();
         }
         if (this.$styles.xml) { return this.$styles.xml(); }
-        else { return baseXmlprefix + this.$styles.html(); }
+        else {
+          var s = new XMLSerializer(); //http://stackoverflow.com/a/5744268
+          return baseXmlprefix + s.serializeToString(this.$styles[0]);;
+        }
       }
     }.initialize(options||{});
   }
