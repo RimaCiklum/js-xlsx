@@ -103,3 +103,11 @@ function readFileSync(filename/*:string*/, opts/*:?ParseOpts*/)/*:Workbook*/ {
 	var o = opts||{}; o.type = 'file';
 	return readSync(filename, o);
 }
+
+/* master of sheetjs*/
+function readFileSync(data, opts) {
+	var o = opts || {}; o.type = 'file'
+	var wb = readSync(data, o);
+	wb.FILENAME = data;
+	return wb;
+}
