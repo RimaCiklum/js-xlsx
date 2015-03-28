@@ -430,13 +430,12 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 			/* formatting */
 			fmtid = fillid = 0;
 			cf = null;
+			if (opts.cellStyles) p.s = get_cell_style_csf(cf);
 			if(do_format && tag.s !== undefined) {
 				cf = styles.CellXf[tag.s];
 				if(cf != null) {
 					if(cf.numFmtId != null) fmtid = cf.numFmtId;
-					if(opts.cellStyles) {
-						if(cf.fillId != null) fillid = cf.fillId;
-					}
+					if (opts.cellStyles && cf.fillId != null) fillid = cf.fillId;
 				}
 			}
 			safe_format(p, fmtid, fillid, opts, themes, styles);

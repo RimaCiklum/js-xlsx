@@ -85,7 +85,33 @@ function get_cell_style(styles, cell, opts) {
   }
 }
 
-function safe_format(p/*:Cell*/, fmtid/*:number*/, fillid/*:?number*/, opts, themes, styles) {
+//p/*:Cell*/, fmtid/*:number*/, fillid/*:?number*/, opts, themes, styles
+function get_cell_style_csf(cellXf) {
+
+  if (cellXf) {
+    var s = {};
+
+    if (typeof cellXf.numFmtId != undefined)  {
+      s.numFmt = SSF._table[cellXf.numFmtId];
+    }
+
+    if(cellXf.fillId)  {
+      s.fill =  styles.Fills[cellXf.fillId];
+    }
+
+    if (cellXf.fontId) {
+      s.font = styles.Fonts[cellXf.fontId];
+    }
+    if (cellXf.borderId) {
+//      s.border = styles.Borders[cellXf.borderId];
+    }
+
+    return s;
+  }
+  return null;
+}
+
+function safe_format(p, fmtid, fillid, opts) {
 	try {
 		if(opts.cellNF) p.z = SSF._table[fmtid];
 	} catch(e) { if(opts.WTF) throw e; }

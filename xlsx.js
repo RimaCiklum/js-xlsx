@@ -15154,11 +15154,89 @@ function parse_wb_xml(data, opts) {
 		return x;
 	});
 	if(XMLNS.main.indexOf(wb.xmlns) === -1) throw new Error("Unknown Namespace: " + wb.xmlns);
-
 	parse_wb_defaults(wb);
 
 	return wb;
 }
+
+
+function parse_fonts(t, opts) {
+  styles.Fonts = [];
+  var font = {};
+  t[0].match(tagregex).forEach(function(x) {
+    var y = parsexmltag(x);
+    switch(y[0]) {
+      case '<fonts': case  '<fonts>': case '</fonts>': break;
+      case '<font>': break;
+      case '</font>': styles.Fonts.push(font); font = {}; break;
+
+      case '<name':
+        if(y.val) font.name = y.val;
+        break;
+      case '<name/>': case '</name>': break;
+
+      case '<sz':
+        if(y.val) font.sz = y.val;
+        break;
+      case '<sz/>': case '</sz>': break;
+
+
+      case '<color':
+        if (!font.color) font.color = {};
+        if (y.theme) font.color.theme = y.theme;
+        if (y.tint) font.color.tint = y.tint;
+        if (y.rgb) font.color.rgb = y.rgb;
+        break;
+      case '<color/>':case '</color>': break;
+    }
+  });
+}
+
+function parse_borders(t, opts) {
+  styles.Borders = [];
+  var border = {};
+  t[0].match(tagregex).forEach(function(x) {
+    var y = parsexmltag(x);
+    switch(y[0]) {
+      case '<borders': case  '<borders>': case '</borders>': break;
+      case '<border>': break;
+      case '</border>':
+        styles.Fonts.push(border);
+        border = {}; break;
+
+      case '<color':
+        if(y.style) border.style = y.style;
+        break;
+      case '<name/>': case '</name>': break;
+
+      case '<sz':
+        if(y.val) font.sz = y.val;
+        break;
+      case '<sz/>': case '</sz>': break;
+    }
+  });
+
+}
+
+/* 18.8.31 numFmts CT_NumFmts */
+function parse_numFmts(t, opts) {
+	styles.NumberFmt = [];
+	var k = keys(SSF._table);
+	for(var i=0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
+	var m = t[0].match(tagregex);
+	for(i=0; i < m.length; ++i) {
+		var y = parsexmltag(m[i]);
+		switch(y[0]) {
+			case '<numFmts': case '</numFmts>': case '<numFmts/>': case '<numFmts>': break;
+			case '<numFmt': {
+				var f=unescapexml(utf8read(y.formatCode)), j=parseInt(y.numFmtId,10);
+				styles.NumberFmt[j] = f; if(j>0) SSF.load(f,j);
+			} break;
+			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in numFmts';
+		}
+	}
+}
+
 
 var WB_XML_ROOT = writextag('workbook', null, {
 	'xmlns': XMLNS.main[0],
@@ -16792,18 +16870,91 @@ function write_ws_xlml(idx, opts, wb) {
 	/* WorksheetOptions */
 	o.push(write_ws_xlml_wsopts(ws, opts, idx, wb));
 
-	return o.join("");
-}
-function write_xlml(wb, opts) {
-	if(!opts) opts = {};
-	if(!wb.SSF) wb.SSF = SSF.get_table();
-	if(wb.SSF) {
-		make_ssf(SSF); SSF.load_table(wb.SSF);
-		// $FlowIgnore
-		opts.revssf = evert_num(wb.SSF); opts.revssf[wb.SSF[65535]] = 0;
-		opts.ssf = wb.SSF;
-		opts.cellXfs = [];
-		get_cell_style(opts.cellXfs, {}, {revssf:{"General":0}});
+
+		/* 18.3.1.4 c CT_Cell */
+		cells = x.substr(ri).split(cellregex);
+		for(ri = typeof tag.r === 'undefined' ? 0 : 1; ri != cells.length; ++ri) {
+			x = cells[ri].trim();
+			if(x.length === 0) continue;
+			cref = x.match(rregex); idx = ri; i=0; cc=0;
+			x = "<c " + (x.substr(0,1)=="<"?">":"") + x;
+			if(cref !== null && cref.length === 2) {
+				idx = 0; d=cref[1];
+				for(i=0; i != d.length; ++i) {
+					if((cc=d.charCodeAt(i)-64) < 1 || cc > 26) break;
+					idx = 26*idx + cc;
+				}
+				--idx;
+				tagc = idx;
+			} else ++tagc;
+			for(i = 0; i != x.length; ++i) if(x.charCodeAt(i) === 62) break; ++i;
+			tag = parsexmltag(x.substr(0,i), true);
+			if(!tag.r) tag.r = utils.encode_cell({r:tagr-1, c:tagc});
+			d = x.substr(i);
+			p = {t:""};
+
+			if((cref=d.match(match_v))!== null && cref[1] !== '') p.v=unescapexml(cref[1]);
+			if(opts.cellFormula && (cref=d.match(match_f))!== null) p.f=unescapexml(cref[1]);
+
+			/* SCHEMA IS ACTUALLY INCORRECT HERE.  IF A CELL HAS NO T, EMIT "" */
+			if(tag.t === undefined && p.v === undefined) {
+				if(!opts.sheetStubs) continue;
+				p.t = "stub";
+			}
+			else p.t = tag.t || "n";
+			if(guess.s.c > idx) guess.s.c = idx;
+			if(guess.e.c < idx) guess.e.c = idx;
+			/* 18.18.11 t ST_CellType */
+			switch(p.t) {
+				case 'n': p.v = parseFloat(p.v); break;
+				case 's':
+					sstr = strs[parseInt(p.v, 10)];
+					p.v = sstr.t;
+					p.r = sstr.r;
+					if(opts.cellHTML) p.h = sstr.h;
+					break;
+				case 'str':
+					p.t = "s";
+					p.v = (p.v!=null) ? utf8read(p.v) : '';
+					if(opts.cellHTML) p.h = p.v;
+					break;
+				case 'inlineStr':
+					cref = d.match(isregex);
+					p.t = 's';
+					if(cref !== null) { sstr = parse_si(cref[1]); p.v = sstr.t; } else p.v = "";
+					break; // inline string
+				case 'b': p.v = parsexmlbool(p.v); break;
+				case 'd':
+					if(!opts.cellDates) { p.v = datenum(p.v); p.t = 'n'; }
+					break;
+				/* error string in .v, number in .v */
+				case 'e': p.w = p.v; p.v = RBErr[p.v]; break;
+			}
+            /* formatting */
+            fmtid = fillid = 0;
+            if(do_format && tag.s !== undefined) {
+              cf = styles.CellXf[tag.s];
+              if (opts.cellStyles) p.s = get_cell_style_csf(cf)
+              if(cf != null) {
+                if(cf.numFmtId != null) fmtid = cf.numFmtId;
+                if(opts.cellStyles && cf.fillId != null) fillid = cf.fillId;
+              }
+            }
+            safe_format(p, fmtid, fillid, opts);
+            s[tag.r] = p;
+	  }
+		//return o.join("");
+	}
+	function write_xlml(wb, opts) {
+		if (!opts) opts = {};
+		if (!wb.SSF) wb.SSF = SSF.get_table();
+		if (wb.SSF) {
+			make_ssf(SSF); SSF.load_table(wb.SSF);
+			// $FlowIgnore
+			opts.revssf = evert_num(wb.SSF); opts.revssf[wb.SSF[65535]] = 0;
+			opts.ssf = wb.SSF;
+			opts.cellXfs = [];
+			get_cell_style(opts.cellXfs, {}, { revssf: { "General": 0 } });
 	}
 	var d = [];
 	d.push(write_props_xlml(wb, opts));
