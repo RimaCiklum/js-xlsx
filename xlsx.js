@@ -16950,7 +16950,9 @@ function write_ws_xlml(idx, opts, wb) {
             fmtid = fillid = 0;
             if(do_format && tag.s !== undefined) {
               cf = styles.CellXf[tag.s];
-              if (opts.cellStyles) p.s = get_cell_style_csf(cf)
+              if (opts.cellStyles) {
+                p.s = get_cell_style_csf(cf)
+              }
               if(cf != null) {
                 if(cf.numFmtId != null) fmtid = cf.numFmtId;
                 if(opts.cellStyles && cf.fillId != null) fillid = cf.fillId;
@@ -21999,7 +22001,7 @@ if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeo
         return count - 1;
       },
 
-      _addNumFmt: function (numFmt) {
+        _addNumFmt: function (numFmt) {
         if (!numFmt) { return 0; }
 
         if (typeof numFmt == 'string') {
@@ -22012,6 +22014,12 @@ if ((typeof 'module' != 'undefined'  && typeof require != 'undefined') || (typeo
         if (/^[0-9]+$/.exec(numFmt)) {
           return numFmt; // we're matching an integer against some known code
         }
+        numFmt = numFmt
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;')
+            .replace(/'/g, '&apos;');
 
 
         var $numFmt = XmlNode('numFmt')

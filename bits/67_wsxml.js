@@ -439,10 +439,10 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 				}
 			}
 			safe_format(p, fmtid, fillid, opts, themes, styles);
-			if(opts.cellDates && do_format && p.t == 'n' && SSF.is_date(SSF._table[fmtid])) { p.t = 'd'; p.v = numdate(p.v); }
-			if(dense) {
+			if (opts.cellDates && do_format && p.t == 'n' && SSF.is_date(SSF._table[fmtid])) { p.t = 'd'; p.v = numdate(p.v); }
+			if (dense) {
 				var _r = decode_cell(tag.r);
-				if(!s[_r.r]) s[_r.r] = [];
+				if (!s[_r.r]) s[_r.r] = [];
 				s[_r.r][_r.c] = p;
 			} else s[tag.r] = p;
 		}
