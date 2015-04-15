@@ -15159,42 +15159,125 @@ function parse_wb_xml(data, opts) {
 	return wb;
 }
 
+function parse_fills(t, opts) {
+	styles.Fills = [];
+	var fill = {};
+	t[0].match(tagregex).forEach(function (x) {
+		var y = parsexmltag(x);
+		switch (y[0]) {
+			case '<fills':
+			case '<fills>':
+			case '</fills>':
+				break;
+
+			/* 18.8.20 fill CT_Fill */
+			case '<fill>':
+				break;
+			case '</fill>':
+				styles.Fills.push(fill);
+				fill = {};
+				break;
+
+			/* 18.8.32 patternFill CT_PatternFill */
+			case '<patternFill':
+				if (y.patternType) fill.patternType = y.patternType;
+				break;
+			case '<patternFill/>':
+			case '</patternFill>':
+				break;
+
+			/* 18.8.3 bgColor CT_Color */
+			case '<bgColor':
+				if (!fill.bgColor) fill.bgColor = {};
+				if (y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
+				if (y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
+				if (y.tint) fill.bgColor.tint = parseFloat(y.tint);
+				/* Excel uses ARGB strings */
+				if (y.rgb) fill.bgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
+				break;
+			case '<bgColor/>':
+			case '</bgColor>':
+				break;
+
+			/* 18.8.19 fgColor CT_Color */
+			case '<fgColor':
+				if (!fill.fgColor) fill.fgColor = {};
+				if (y.theme) fill.fgColor.theme = parseInt(y.theme, 10);
+				if (y.tint) fill.fgColor.tint = parseFloat(y.tint);
+				/* Excel uses ARGB strings */
+				if (y.rgb) fill.fgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
+				break;
+			case '<fgColor/>':
+			case '</fgColor>':
+				break;
+
+			default:
+				if (opts.WTF) throw 'unrecognized ' + y[0] + ' in fills';
+		}
+	});
+}
+
 
 function parse_fonts(t, opts) {
   styles.Fonts = [];
   var font = {};
-  t[0].match(tagregex).forEach(function(x) {
+  t[0].match(tagregex).forEach(function (x) {
     var y = parsexmltag(x);
-    switch(y[0]) {
+    switch (y[0]) {
 
-      case '<fonts': case  '<fonts>': case '</fonts>': break;
+      case '<fonts':
+      case  '<fonts>':
+      case '</fonts>':
+        break;
       case '<font':
         break;
-      case '</font>': styles.Fonts.push(font); ;font = {}; break;
+      case '</font>':
+        styles.Fonts.push(font);
+        ;
+        font = {};
+        break;
 
       case '<name':
-        if(y.val) font.name = y.val;
+        if (y.val) font.name = y.val;
         break;
-      case '<name/>': case '</name>': break;
+      case '<name/>':
+      case '</name>':
+        break;
 
 
-      case '<b/>': font.bold = true;break;
-      case '<u/>':  font.underline = true;break;
-      case '<i/>':  font.italic = true;break;
-      case '<strike/>':  font.strike = true;break;
-      case '<outline/>':  font.outline = true;break;
-      case '<shadow/>':  font.shadow = true;break;
+      case '<b/>':
+        font.bold = true;
+        break;
+      case '<u/>':
+        font.underline = true;
+        break;
+      case '<i/>':
+        font.italic = true;
+        break;
+      case '<strike/>':
+        font.strike = true;
+        break;
+      case '<outline/>':
+        font.outline = true;
+        break;
+      case '<shadow/>':
+        font.shadow = true;
+        break;
 
 
       case '<sz':
-        if(y.val) font.sz = y.val;
+        if (y.val) font.sz = y.val;
         break;
-      case '<sz/>': case '</sz>': break;
+      case '<sz/>':
+      case '</sz>':
+        break;
 
       case '<vertAlign':
-        if(y.val) font.vertAlign = y.val;
+        if (y.val) font.vertAlign = y.val;
         break;
-      case '<vertAlign/>': case '</vertAlign>': break;
+      case '<vertAlign/>':
+      case '</vertAlign>':
+        break;
 
 
       case '<color':
@@ -15203,32 +15286,77 @@ function parse_fonts(t, opts) {
         if (y.tint) font.color.tint = y.tint;
         if (y.rgb) font.color.rgb = y.rgb;
         break;
-      case '<color/>':case '</color>': break;
+      case '<color/>':
+      case '</color>':
+        break;
     }
   });
 }
 
 function parse_borders(t, opts) {
   styles.Borders = [];
-  var border = {};
-  t[0].match(tagregex).forEach(function(x) {
+  var border = {}, sub_border = {};
+  t[0].match(tagregex).forEach(function (x) {
     var y = parsexmltag(x);
-    switch(y[0]) {
-      case '<borders': case  '<borders>': case '</borders>': break;
-      case '<border>': break;
+    switch (y[0]) {
+      case '<borders':
+      case  '<borders>':
+      case '</borders>':
+        break;
+      case '<border':
+      case '<border>':
+        border = {};
+        if (y.diagonalUp) { border.diagonalUp = y.diagonalUp; }
+        if (y.diagonalDown) { border.diagonalDown = y.diagonalDown; }
+        styles.Borders.push(border);
+
+        break;
+        break;
       case '</border>':
-        styles.Fonts.push(border);
-        border = {}; break;
+        break;
+
+      case '<left':
+        sub_border = border.left = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<right':
+        sub_border = border.right = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<top':
+        sub_border = border.top = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<bottom':
+        sub_border = border.bottom = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<diagonal':
+        sub_border = border.diagonal = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
 
       case '<color':
-        if(y.style) border.style = y.style;
+        sub_border.color = {};
+        if (y.theme) sub_border.color.theme = y.theme;
+        if (y.tint) sub_border.color.tint = y.tint;
+        if (y.rgb) sub_border.color.rgb = y.rgb;
         break;
-      case '<name/>': case '</name>': break;
-
-      case '<sz':
-        if(y.val) font.sz = y.val;
+      case '<name/>':
+      case '</name>':
         break;
-      case '<sz/>': case '</sz>': break;
+      default:
+        break;
     }
   });
 
@@ -15236,21 +15364,29 @@ function parse_borders(t, opts) {
 
 /* 18.8.31 numFmts CT_NumFmts */
 function parse_numFmts(t, opts) {
-	styles.NumberFmt = [];
-	var k = keys(SSF._table);
-	for(var i=0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
-	var m = t[0].match(tagregex);
-	for(i=0; i < m.length; ++i) {
-		var y = parsexmltag(m[i]);
-		switch(y[0]) {
-			case '<numFmts': case '</numFmts>': case '<numFmts/>': case '<numFmts>': break;
-			case '<numFmt': {
-				var f=unescapexml(utf8read(y.formatCode)), j=parseInt(y.numFmtId,10);
-				styles.NumberFmt[j] = f; if(j>0) SSF.load(f,j);
-			} break;
-			default: if(opts.WTF) throw 'unrecognized ' + y[0] + ' in numFmts';
-		}
-	}
+  styles.NumberFmt = [];
+  var k = keys(SSF._table);
+  for (var i = 0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
+  var m = t[0].match(tagregex);
+  for (i = 0; i < m.length; ++i) {
+    var y = parsexmltag(m[i]);
+    switch (y[0]) {
+      case '<numFmts':
+      case '</numFmts>':
+      case '<numFmts/>':
+      case '<numFmts>':
+        break;
+      case '<numFmt':
+      {
+        var f = unescapexml(utf8read(y.formatCode)), j = parseInt(y.numFmtId, 10);
+        styles.NumberFmt[j] = f;
+        if (j > 0) SSF.load(f, j);
+      }
+        break;
+      default:
+        if (opts.WTF) throw 'unrecognized ' + y[0] + ' in numFmts';
+    }
+  }
 }
 
 
@@ -15503,14 +15639,44 @@ function parse_wb_bin(data, opts) {
 			case 0x0026: /* 'BrtACEnd' */
 				state.pop(); pass = false; break;
 
-			case 0x0010: /* 'BrtFRTArchID$' */ break;
+  var o = [XML_HEADER, STYLES_XML_ROOT], w;
+  if ((w = write_numFmts(wb.SSF)) != null) o[o.length] = w;
+  o[o.length] = ('<fonts count="1"><font><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>');
+  o[o.length] = ('<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>');
+  o[o.length] = ('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>');
+  o[o.length] = ('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
+  if ((w = write_cellXfs(opts.cellXfs))) o[o.length] = (w);
+  o[o.length] = ('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');
+  o[o.length] = ('<dxfs count="0"/>');
+  o[o.length] = ('<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>');
 
-			default:
-				if((R_n||"").indexOf("Begin") > 0){/* empty */}
-				else if((R_n||"").indexOf("End") > 0){/* empty */}
-				else if(!pass || (opts.WTF && state[state.length-1] != "BrtACBegin" && state[state.length-1] != "BrtFRTBegin")) throw new Error("Unexpected record " + RT + " " + R_n);
-		}
-	}, opts);
+  if (o.length > 2) {
+    o[o.length] = ('</styleSheet>');
+    o[1] = o[1].replace("/>", ">");
+  }
+  return o.join("");
+}
+/* [MS-XLSB] 2.4.651 BrtFmt */
+function parse_BrtFmt(data, length) {
+	var ifmt = data.read_shift(2);
+	var stFmtCode = parse_XLWideString(data,length-2);
+	return [ifmt, stFmtCode];
+}
+
+/* [MS-XLSB] 2.4.653 BrtFont TODO */
+function parse_BrtFont(data, length) {
+	var out = {flags:{}};
+	out.dyHeight = data.read_shift(2);
+	out.grbit = parse_FontFlags(data, 2);
+	out.bls = data.read_shift(2);
+	out.sss = data.read_shift(2);
+	out.uls = data.read_shift(1);
+	out.bFamily = data.read_shift(1);
+	out.bCharSet = data.read_shift(1);
+	data.l++;
+	out.brtColor = parse_BrtColor(data, 8);
+	out.bFontScheme = data.read_shift(1);
+	out.name = parse_XLWideString(data, length - 21);
 
 	parse_wb_defaults(wb);
 

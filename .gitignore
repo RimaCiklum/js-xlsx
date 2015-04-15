@@ -31,3 +31,8 @@ tmp
 *.sheetjs
 *.exe
 *.img
+*.xlsx
+*.xlsm
+*.xlsb
+lab/
+.idea/

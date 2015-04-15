@@ -87,7 +87,8 @@ function get_cell_style(styles, cell, opts) {
 function get_cell_style_csf(cellXf) {
 
   if (cellXf) {
-    var s = {};
+
+    var s = {}
 
     if (typeof cellXf.numFmtId != undefined)  {
       s.numFmt = SSF._table[cellXf.numFmtId];
@@ -101,8 +102,12 @@ function get_cell_style_csf(cellXf) {
       s.font = styles.Fonts[cellXf.fontId];
     }
     if (cellXf.borderId) {
-//      s.border = styles.Borders[cellXf.borderId];
+      s.border = styles.Borders[cellXf.borderId];
     }
+    if (cellXf.applyAlignment==1) {
+      s.alignment = cellXf.alignment;
+    }
+
 
     return s;
   }
