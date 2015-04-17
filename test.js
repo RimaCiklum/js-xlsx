@@ -827,12 +827,6 @@ function cmparr(x){ for(var i=1;i<x.length;++i) assert.deepEqual(x[0], x[i]); }
 function deepcmp(x,y,k,m,c) {
 	var s = k.indexOf(".");
 	m = (m||"") + "|" + (s > -1 ? k.substr(0,s) : k);
-  console.log("======================================")
-  console.log(k)
-  console.log(JSON.stringify(x))
-  console.log(JSON.stringify(y))
-  console.log(x[k]);
-  console.log(y[k])
 	if(s < 0) return assert[c<0?'notEqual':'equal'](x[k], y[k], m);
 	return deepcmp(x[k.substr(0,s)],y[k.substr(0,s)],k.substr(s+1),m,c);
 }
@@ -1285,24 +1279,24 @@ describe('should correctly handle styles', function() {
         /* TODO */
         //diffsty(wsxls, rn2(ranges[i])[0], rn2(ranges[j])[0]);
       }
-    }
+    });
+    it('correct styles', function() {
+      var stylesxls = ranges.map(function(r) { return rn2(r)[0]; }).map(function(r) { return wsxls[r].s; });
+      var stylesxlsx = ranges.map(function(r) { return rn2(r)[0]; }).map(function(r) { return wsxlsx[r].s; });
+      for(var i = 0; i != exp.length; ++i) {
+        var props = [
+          "fgColor.theme","fgColor.raw_rgb",
+          "bgColor.theme","bgColor.raw_rgb",
+          "patternType"
+        ];
+
+        props.forEach(function(k) {
+          deepcmp(exp[i], stylesxlsx[i].fill, k, i + ":"+k);
+
+        });
+      }
+    });
   });
-  it('correct styles', function() {
-    var stylesxls = ranges.map(function(r) { return rn2(r)[0]; }).map(function(r) { return wsxls[r].s; });
-    var stylesxlsx = ranges.map(function(r) { return rn2(r)[0]; }).map(function(r) { return wsxlsx[r].s; });
-    for(var i = 0; i != exp.length; ++i) {
-      [
-        "fgColor.theme","fgColor.raw_rgb",
-        "bgColor.theme","bgColor.raw_rgb",
-        "patternType"
-      ].forEach(function(k) {
-            deepcmp(exp[i], stylesxlsx[i].fill, k, i + ":"+k);
-            /* TODO */
-            //deepcmp(exp[i], stylesxls[i], k, i + ":"+k);
-          });
-    }
-  });
-});
 
 
 describe('write features', function() {

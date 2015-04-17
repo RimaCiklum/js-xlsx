@@ -73,38 +73,60 @@ function parse_borders(t, styles, themes, opts) {
 	});
 }
 
-/* 18.8.21 fills CT_Fills */
-function parse_fills(t, styles, themes, opts) {
-	styles.Fills = [];
-	var fill = {};
-	var pass = false;
-	(t[0].match(tagregex)||[]).forEach(function(x) {
-		var y = parsexmltag(x);
-		switch(strip_ns(y[0])) {
-			case '<fills': case '<fills>': case '</fills>': break;
+function parse_fills(t, opts) {
+  styles.Fills = [];
+  var fill = {};
+  t[0].match(tagregex).forEach(function (x) {
+    var y = parsexmltag(x);
+    switch (y[0]) {
+      case '<fills':
+      case '<fills>':
+      case '</fills>':
+        break;
 
-			/* 18.8.20 fill CT_Fill */
-			case '<fill>': case '<fill': case '<fill/>':
-				fill = {}; styles.Fills.push(fill); break;
-			case '</fill>': break;
+      /* 18.8.20 fill CT_Fill */
+      case '<fill>':
+        break;
+      case '</fill>':
+        styles.Fills.push(fill);
+        fill = {};
+        break;
 
-			/* 18.8.24 gradientFill CT_GradientFill */
-			case '<gradientFill>': break;
-			case '<gradientFill':
-			case '</gradientFill>': styles.Fills.push(fill); fill = {}; break;
+      /* 18.8.32 patternFill CT_PatternFill */
+      case '<patternFill':
+        if (y.patternType) fill.patternType = y.patternType;
+        break;
+      case '<patternFill/>':
+      case '</patternFill>':
+        break;
 
-			/* 18.8.32 patternFill CT_PatternFill */
-			case '<patternFill': case '<patternFill>':
-				if(y.patternType) fill.patternType = y.patternType;
-				break;
-			case '<patternFill/>': case '</patternFill>': break;
+      /* 18.8.3 bgColor CT_Color */
+      case '<bgColor':
+        if (!fill.bgColor) fill.bgColor = {};
+        if (y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
+        if (y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
+        if (y.tint) fill.bgColor.tint = parseFloat(y.tint);
 
-			/* 18.8.3 bgColor CT_Color */
-			case '<bgColor':
-				if(!fill.bgColor) fill.bgColor = {};
-        if(y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
-        if(y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
-        if(y.tint) fill.bgColor.tint = parseFloat(y.tint);
+
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          fill.bgColor.raw_rgb = rgb_tint(themes.themeElements.clrScheme[fill.bgColor.theme].rgb, fill.fgColor.tint || 0);
+        }
+        /* Excel uses ARGB strings */
+        if (y.rgb) fill.bgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
+        break;
+      case '<bgColor/>':
+      case '</bgColor>':
+        break;
+
+      /* 18.8.19 fgColor CT_Color */
+      case '<fgColor':
+        if (!fill.fgColor) fill.fgColor = {};
+        if (y.theme) fill.fgColor.theme = parseInt(y.theme, 10);
+        if (y.tint) fill.fgColor.tint = parseFloat(y.tint);
+
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          fill.fgColor.raw_rgb = rgb_tint(themes.themeElements.clrScheme[fill.fgColor.theme].rgb, fill.fgColor.tint || 0);
+        }
         /* Excel uses ARGB strings */
         if(y.rgb) fill.bgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
 				break;
@@ -325,6 +347,9 @@ function parse_fonts(t, opts) {
         if (!font.color) font.color = {};
         if (y.theme) font.color.theme = y.theme;
         if (y.tint) font.color.tint = y.tint;
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          font.color.raw_rgb = rgb_tint(themes.themeElements.clrScheme[font.color.theme].rgb, font.color.tint || 0);
+        }
         if (y.rgb) font.color.rgb = y.rgb;
         break;
       case '<color/>':
@@ -390,6 +415,10 @@ function parse_borders(t, opts) {
       case '<color':
         sub_border.color = {};
         if (y.theme) sub_border.color.theme = y.theme;
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          sub_border.color.raw_rgb = rgb_tint(themes.themeElements.clrScheme[sub_border.color.theme].rgb, sub_border.color.tint || 0);
+        }
+
         if (y.tint) sub_border.color.tint = y.tint;
         if (y.rgb) sub_border.color.rgb = y.rgb;
         break;
