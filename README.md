@@ -1,8 +1,22 @@
 # xlsx
 
-Parser and writer for Excel 2007+ (XLSX/XLSM/XLSB) files and parser for ODS.
-Pure-JS cleanroom implementation from the Office Open XML spec, [MS-XLSB], ODF
-specifications and related documents.
+Parser and writer for various spreadsheet formats.  Pure-JS cleanroom
+implementation from official specifications and related documents.
+
+Supported read formats:
+
+- Excel 2007+ XML Formats (XLSX/XLSM)
+- Excel 2007+ Binary Format (XLSB)
+- Excel 2003-2004 XML Format (XML "SpreadsheetML")
+- Excel 97-2004 (XLS BIFF8)
+- Excel 5.0/95 (XLS BIFF5)
+- OpenDocument Spreadsheet (ODS)
+
+Supported write formats:
+
+- XLSX
+- CSV (and general DSV)
+- JSON and JS objects (various styles)
 
 Demo: <http://oss.sheetjs.com/js-xlsx>
 
@@ -10,32 +24,40 @@ Source: <http://git.io/xlsx>
 
 ## Installation
 
-In [nodejs](https://www.npmjs.org/package/xlsx):
+With [npm](https://www.npmjs.org/package/xlsx):
 
-    npm install xlsx
+```sh
+npm install xlsx --save
+```
 
 In the browser:
 
-    <script lang="javascript" src="dist/xlsx.core.min.js"></script>
+```html
+<script lang="javascript" src="dist/xlsx.core.min.js"></script>
+```
 
-In [bower](http://bower.io/search/?q=js-xlsx):
+With [bower](http://bower.io/search/?q=js-xlsx):
 
-    bower install js-xlsx
+```sh
+bower install js-xlsx
+```
 
 CDNjs automatically pulls the latest version and makes all versions available at
 <http://cdnjs.com/libraries/xlsx>
 
 ## Optional Modules
 
-The nodejs version automatically requires modules for additional features.  Some
+The node version automatically requires modules for additional features.  Some
 of these modules are rather large in size and are only needed in special
 circumstances, so they do not ship with the core.  For browser use, they must
 be included directly:
 
-    <!-- international support from https://github.com/sheetjs/js-codepage -->
-    <script src="dist/cpexcel.js"></script>
-    <!-- ODS support -->
-    <script src="dist/ods.js"></script>
+```html
+<!-- international support from https://github.com/sheetjs/js-codepage -->
+<script src="dist/cpexcel.js"></script>
+<!-- ODS support -->
+<script src="dist/ods.js"></script>
+```
 
 An appropriate version for each dependency is included in the dist/ directory.
 
@@ -49,16 +71,18 @@ Since xlsx.js uses ES5 functions like `Array#forEach`, older browsers require
 
 To use the shim, add the shim before the script tag that loads xlsx.js:
 
-    <script type="text/javascript" src="/path/to/shim.js"></script>
+```html
+<script type="text/javascript" src="/path/to/shim.js"></script>
+```
 
 ## Parsing Workbooks
 
 For parsing, the first step is to read the file.  This involves acquiring the
 data and feeding it into the library.  Here are a few common scenarios:
 
-- nodejs readFile:
+- node readFile:
 
-```
+```js
 if(typeof require !== 'undefined') XLSX = require('xlsx');
 var workbook = XLSX.readFile('test.xlsx');
 /* DO SOMETHING WITH workbook HERE */
@@ -67,10 +91,11 @@ var workbook = XLSX.readFile('test.xlsx');
 - ajax (for a more complete example that works in older browsers, check the demo
   at <http://oss.sheetjs.com/js-xlsx/ajax.html>):
 
-```
+```js
 /* set up XMLHttpRequest */
 var url = "test_files/formula_stress_test_ajax.xlsx";
 var oReq = new XMLHttpRequest();
+
 oReq.open("GET", url, true);
 oReq.responseType = "arraybuffer";
 
@@ -94,13 +119,14 @@ oReq.send();
 
 - HTML5 drag-and-drop using readAsBinaryString:
 
-```
+```js
 /* set up drag-and-drop event */
 function handleDrop(e) {
   e.stopPropagation();
   e.preventDefault();
   var files = e.dataTransfer.files;
-  var i,f;
+  var i, f;
+  
   for (i = 0, f = files[i]; i != files.length; ++i) {
     var reader = new FileReader();
     var name = f.name;
@@ -120,10 +146,11 @@ drop_dom_element.addEventListener('drop', handleDrop, false);
 
 - HTML5 input file element using readAsBinaryString:
 
-```
+```js
 function handleFile(e) {
   var files = e.target.files;
-  var i,f;
+  var i, f;
+  
   for (i = 0, f = files[i]; i != files.length; ++i) {
     var reader = new FileReader();
     var name = f.name;
@@ -142,13 +169,33 @@ input_dom_element.addEventListener('change', handleFile, false);
 
 ## Working with the Workbook
 
-This example walks through every cell of every sheet and dumps the values:
+The full object format is described later in this README.
 
+This example extracts the value stored in cell A1 from the first worksheet:
+
+```js
+var first_sheet_name = workbook.SheetNames[0];
+var address_of_cell = 'A1';
+
+/* Get worksheet */
+var worksheet = workbook.Sheets[first_sheet_name];
+
+/* Find desired cell */
+var desired_cell = worksheet[address_of_cell];
+
+/* Get the value */
+var desired_value = desired_cell.v;
 ```
+
+This example iterates through every nonempty of every sheet and dumps values:
+
+```js
 var sheet_name_list = workbook.SheetNames;
-sheet_name_list.forEach(function(y) {
+
+sheet_name_list.forEach(function(y) { /* iterate through sheets */
   var worksheet = workbook.Sheets[y];
   for (z in worksheet) {
+    /* all keys that do not begin with "!" correspond to cell addresses */
     if(z[0] === '!') continue;
     console.log(y + "!" + z + "=" + JSON.stringify(worksheet[z].v));
   }
@@ -162,13 +209,15 @@ Complete examples:
 Note that older versions of IE does not support HTML5 File API, so the base64
 mode is provided for testing.  On OSX you can get the base64 encoding with:
 
-    $ <target_file.xlsx base64 | pbcopy
+```sh
+$ <target_file.xlsx base64 | pbcopy
+```
 
 - <http://oss.sheetjs.com/js-xlsx/ajax.html> XMLHttpRequest
 
-- <https://github.com/SheetJS/js-xlsx/blob/master/bin/xlsx.njs> nodejs
+- <https://github.com/SheetJS/js-xlsx/blob/master/bin/xlsx.njs> node
 
-The nodejs version installs a binary `xlsx` which can read XLSX/XLSM/XLSB
+The node version installs a command line tool `xlsx` which can read spreadsheet
 files and output the contents in various formats.  The source is available at
 `xlsx.njs` in the bin directory.
 
@@ -187,7 +236,7 @@ Assuming `workbook` is a workbook object:
 
 - nodejs write to file:
 
-```
+```js
 /* output format determined by filename */
 XLSX.writeFile(workbook, 'out.xlsx');
 /* at this point, out.xlsx is a file that you can distribute */
@@ -195,7 +244,7 @@ XLSX.writeFile(workbook, 'out.xlsx');
 
 - write to binary string (using FileSaver.js):
 
-```
+```js
 /* bookType can be 'xlsx' or 'xlsm' or 'xlsb' */
 var wopts = { bookType:'xlsx', bookSST:false, type:'binary' };
 
@@ -220,7 +269,7 @@ Complete examples:
 
 ## Interface
 
-`XLSX` is the exposed variable in the browser and the exported nodejs variable
+`XLSX` is the exposed variable in the browser and the exported node variable
 
 `XLSX.version` is the version of the library (added by the build script).
 
@@ -270,7 +319,7 @@ Cell range objects are stored as `{s:S, e:E}` where `S` is the first cell and
 range `A3:B7` is represented by the object `{s:{c:0, r:2}, e:{c:1, r:6}}`. Utils
 use the following pattern to walk each of the cells in a range:
 
-```
+```js
 for(var R = range.s.r; R <= range.e.r; ++R) {
   for(var C = range.s.c; C <= range.e.c; ++C) {
     var cell_address = {c:C, r:R};
@@ -374,7 +423,8 @@ Special worksheet keys (accessible as `worksheet[key]`, each starting with `!`):
 `wb.Sheets[sheetname]` returns an object representing the worksheet.
 
 `wb.Props` is an object storing the standard properties.  `wb.Custprops` stores
-custom properties.
+custom properties.  Since the XLS standard properties deviate from the XLSX
+standard, XLS parsing stores core properties in both places.  .
 
 
 ## Parsing Options
@@ -383,7 +433,7 @@ The exported `read` and `readFile` functions accept an options argument:
 
 | Option Name | Default | Description |
 | :---------- | ------: | :---------- |
-| cellFormula | true    | Save formulae to the .f field |
+| cellFormula | true    | Save formulae to the .f field ** |
 | cellHTML    | true    | Parse rich text and save HTML to the .h field |
 | cellNF      | false   | Save number format string to the .z field |
 | cellStyles  | false   | Save style/theme info to the .s field |
@@ -395,17 +445,24 @@ The exported `read` and `readFile` functions accept an options argument:
 | bookProps   | false   | If true, only parse enough to get book metadata ** |
 | bookSheets  | false   | If true, only parse enough to get the sheet names |
 | bookVBA     | false   | If true, expose vbaProject.bin to `vbaraw` field ** |
+| password    | ""      | If defined and file is encrypted, use password ** |
 
+- `cellFormula` option only applies to formats that require extra processing to
+  parse formulae (XLS/XLSB).
 - Even if `cellNF` is false, formatted text will be generated and saved to `.w`
 - In some cases, sheets may be parsed even if `bookSheets` is false.
 - `bookSheets` and `bookProps` combine to give both sets of information
 - `Deps` will be an empty object if `bookDeps` is falsy
-- `bookFiles` adds a `keys` array (paths in the ZIP) and a `files` hash (whose
-  keys are paths and values are objects representing the files)
+- `bookFiles` behavior depends on file type:
+    * `keys` array (paths in the ZIP) for ZIP-based formats
+    * `files` hash (mapping paths to objects representing the files) for ZIP
+    * `cfb` object for formats using CFB containers
 - `sheetRows-1` rows will be generated when looking at the JSON object output
   (since the header row is counted as a row when parsing the data)
 - `bookVBA` merely exposes the raw vba object.  It does not parse the data.
 - `cellDates` currently does not convert numerical dates to JS dates.
+- Currently only XOR encryption is supported.  Unsupported error will be thrown
+  for files employing other encryption methods.
 
 The defaults are enumerated in bits/84_defaults.js
 
@@ -502,7 +559,7 @@ Borders for merged areas are specified for each cell within the merged area.  So
 
 ## Tested Environments
 
- - NodeJS 0.8, 0.10 (latest release), 0.11 (unstable)
+ - NodeJS 0.8, 0.10 (latest release), 0.11.14 (unstable), io.js
  - IE 6/7/8/9/10/11 using Base64 mode (IE10/11 using HTML5 mode)
  - FF 18 using Base64 or HTML5 mode
  - Chrome 24 using Base64 or HTML5 mode
@@ -521,11 +578,11 @@ Running `make init` will refresh the `test_files` submodule and get the files.
 
 ## Testing
 
-`make test` will run the nodejs-based tests.  To run the in-browser tests, clone
+`make test` will run the node-based tests.  To run the in-browser tests, clone
 [the oss.sheetjs.com repo](https://github.com/SheetJS/SheetJS.github.io) and
 replace the xlsx.js file (then fire up the browser and go to `stress.html`):
 
-```
+```sh
 $ cp xlsx.js ../SheetJS.github.io
 $ cd ../SheetJS.github.io
 $ simplehttpserver # or "python -mSimpleHTTPServer" or "serve"
@@ -544,7 +601,7 @@ build script (run `make`) will concatenate the individual bits to produce the
 script.  Before submitting a contribution, ensure that running make will produce
 the xlsx.js file exactly.  The simplest way to test is to move the script:
 
-```
+```sh
 $ mv xlsx.js xlsx.new.js
 $ make
 $ diff xlsx.js xlsx.new.js
@@ -552,10 +609,6 @@ $ diff xlsx.js xlsx.new.js
 
 To produce the dist files, run `make dist`.  The dist files are updated in each
 version release and should not be committed between versions.
-
-## XLS Support
-
-XLS is available in [js-xls](http://git.io/xls).
 
 ## License
 
@@ -578,7 +631,18 @@ OSP-covered specifications:
  - [MS-XLSB]: Excel (.xlsb) Binary File Format
  - [MS-XLSX]: Excel (.xlsx) Extensions to the Office Open XML SpreadsheetML File Format
  - [MS-OE376]: Office Implementation Information for ECMA-376 Standards Support
+ - [MS-CFB]: Compound File Binary File Format
+ - [MS-XLS]: Excel Binary File Format (.xls) Structure Specification
+ - [MS-ODATA]: Open Data Protocol (OData)
+ - [MS-OFFCRYPTO]: Office Document Cryptography Structure
+ - [MS-OLEDS]: Object Linking and Embedding (OLE) Data Structures
+ - [MS-OLEPS]: Object Linking and Embedding (OLE) Property Set Data Structures
+ - [MS-OSHARED]: Office Common Data Types and Objects Structures
+ - [MS-OVBA]: Office VBA File Format Structure
+ - [MS-CTXLS]: Excel Custom Toolbar Binary File Format
  - [MS-XLDM]: Spreadsheet Data Model File Format
+ - [MS-EXSPXML3]: Excel Calculation Version 2 Web Service XML Schema
+ - [XLS]: Microsoft Office Excel 97-2007 Binary File Format Specification
 
 Open Document Format for Office Applications Version 1.2 (29 September 2011)
 
