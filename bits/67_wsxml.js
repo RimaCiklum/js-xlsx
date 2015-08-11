@@ -200,6 +200,10 @@ function write_ws_xml_cols(ws, cols)/*:string*/ {
 	return o.join("");
 }
 
+function write_ws_xml_cell(cell, ref, ws, opts, idx, wb) {
+	if(cell.v === undefined && cell.s === undefined) return ""
+};
+
 function parse_ws_xml_autofilter(data/*:string*/) {
 	var o = { ref: (data.match(/ref="([^"]*)"/)||[])[1]};
 	return o;
@@ -343,13 +347,13 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 				tagc = idx;
 			} else ++tagc;
 			for(i = 0; i != x.length; ++i) if(x.charCodeAt(i) === 62) break; ++i;
-			tag = parsexmltag(x.slice(0,i), true);
+			tag = parsexmltag(x.substr(0,i), true);
 			if(!tag.r) tag.r = encode_cell({r:tagr-1, c:tagc});
-			d = x.slice(i);
+			d = x.substr(i);
 			p = ({t:""}/*:any*/);
 
-			if((cref=d.match(match_v))!= null && /*::cref != null && */cref[1] !== '') p.v=unescapexml(cref[1]);
-			if(opts.cellFormula) {
+			if((cref=d.match(match_v))!== null && cref[1] !== '') p.v=unescapexml(cref[1]);
+			if(opts.cellFormula && (cref=d.match(match_f))!== null) p.f=unescapexml(cref[1]); {
 				if((cref=d.match(match_f))!= null && /*::cref != null && */cref[1] !== '') {
 					/* TODO: match against XLSXFutureFunctions */
 					p.f=unescapexml(utf8read(cref[1]));
@@ -376,7 +380,7 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 							p.F = arrayf[i][1];
 			}
 
-			if(tag.t == null && p.v === undefined) {
+			if(tag.t == null && tag.s === undefined && p.v === undefined) {
 				if(p.f || p.F) {
 					p.v = 0; p.t = "n";
 				} else if(!opts.sheetStubs) continue;
@@ -388,10 +392,8 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 			/* 18.18.11 t ST_CellType */
 			switch(p.t) {
 				case 'n':
-					if(p.v == "" || p.v == null) {
-						if(!opts.sheetStubs) continue;
-						p.t = 'z';
-					} else p.v = parseFloat(p.v);
+					p.v = parseFloat(p.v);
+					if(isNaN(p.v)) p.v = "" // we don't want NaN if p.v is null
 					break;
 				case 's':
 					if(typeof p.v == 'undefined') {
