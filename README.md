@@ -1,17 +1,7 @@
-# xlsx-style
+# xlsx
 
 Parser and writer for various spreadsheet formats.  Pure-JS cleanroom
 implementation from official specifications and related documents.
----
-**NOTE:** [This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
-It is extended to enable cell formats to be read from and written to .xlsx workbooks.
-The intent is to provide a temporary means of using these features in practice, and ultimately to merge this into the primary project.
-Report any issues to https://github.com/protobi/js-xlsx/issues.
-
-For those contributing to this fork:
-* `master` is the main branch, which follows the original repo to enable a future pull request.
-* `beta` branch is published to npm and bower to make this fork available for use.
----
 
 Supported read formats:
 
@@ -34,10 +24,10 @@ Source: <http://git.io/xlsx>
 
 ## Installation
 
-With [npm](https://www.npmjs.org/package/xlsx-style):
+With [npm](https://www.npmjs.org/package/xlsx):
 
 ```sh
-npm install xlsx-style --save
+npm install xlsx --save
 ```
 
 In the browser:
@@ -49,7 +39,7 @@ In the browser:
 With [bower](http://bower.io/search/?q=js-xlsx):
 
 ```sh
-bower install js-xlsx-style#beta
+bower install js-xlsx
 ```
 
 CDNjs automatically pulls the latest version and makes all versions available at
@@ -429,10 +419,7 @@ Special worksheet keys (accessible as `worksheet[key]`, each starting with `!`):
   will write all cells in the merge range if they exist, so be sure that only
   the first cell (upper-left) in the range is set.
 
-- `ws['!rowBreaks']`: array of row break points, e.g. `[16,32]`
-- `ws['!colBreaks']`: array of col break points, e.g. `[8,16]`
-
-
+- `ws['!pageSetup']`: `{scale: '100', orientation: 'portrait'||'landscape'}
 ### Workbook Object
 
 `workbook.SheetNames` is an ordered list of the sheets in the workbook

@@ -98,6 +98,16 @@ function write_ws_xml_merges(merges/*:Array<Range>*/)/*:string*/ {
 	return o + '</mergeCells>';
 }
 
+function write_ws_xml_pagesetup(setup) {
+  var pageSetup = writextag("pageSetup", null, {
+    scale: setup.scale || "100",
+    orientation: setup.orientation || "portrait",
+    horizontalDpi: setup.horizontalDpi || "4294967292",
+    verticalDpi: setup.verticalDpi || "4294967292",
+  });
+  console.log(pageSetup);
+  return pageSetup;
+}
 /* 18.3.1.82-3 sheetPr CT_ChartsheetPr / CT_SheetPr */
 function parse_ws_xml_sheetpr(sheetPr/*:string*/, s, wb/*:WBWBProps*/, idx/*:number*/) {
 	var data = parsexmltag(sheetPr);
@@ -630,9 +640,10 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
   if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
   if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
 
+  if (ws['!pageSetup'] !== undefined) o[o.length] =  write_ws_xml_pagesetup(ws['!pageSetup'])
   if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
   if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
-  if (ws['!pageSetup'] !== undefined) o[o.length] =  write_ws_xml_pagesetup(ws['!pageSetup'])
+
 
 	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
 	return o.join("");
@@ -653,7 +664,7 @@ function write_ws_xml_col_breaks(breaks) {
   var brk = [];
   for (var i=0; i<breaks.length; i++) {
     var thisBreak = ''+ (breaks[i]);
-    var nextBreak = '' + (breaks[i+1] || '16383');
+    var nextBreak = '' + (breaks[i+1] || '1048575');
     brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
   }
   return writextag('colBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
