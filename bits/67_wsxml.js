@@ -627,6 +627,30 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 	/* tableParts */
 	/* extLst */
 
-	if(o.length>1) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
+  if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
+  if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
+
+	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
 	return o.join("");
+}
+
+function write_ws_xml_row_breaks(breaks) {
+  console.log("Writing breaks")
+  var brk = [];
+  for (var i=0; i<breaks.length; i++) {
+    var thisBreak = ''+ (breaks[i]);
+    var nextBreak = '' + (breaks[i+1] || '16383');
+    brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
+  }
+  return writextag('rowBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
+}
+function write_ws_xml_col_breaks(breaks) {
+  console.log("Writing breaks");
+  var brk = [];
+  for (var i=0; i<breaks.length; i++) {
+    var thisBreak = ''+ (breaks[i]);
+    var nextBreak = '' + (breaks[i+1] || '16383');
+    brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
+  }
+  return writextag('colBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
 }
