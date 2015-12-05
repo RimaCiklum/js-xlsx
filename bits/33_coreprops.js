@@ -63,7 +63,13 @@ function cp_doit(f, g, h, o, p) {
 function write_core_props(cp, _opts) {
 	var opts = _opts || {};
 	var o = [XML_HEADER, CORE_PROPS_XML_ROOT], p = {};
-	if(!cp && !opts.Props) return o.join("");
+	if (opts && opts.Props) {
+    if (opts.Props.title) o[o.length]       = '<dc:title>'       + opts.Props.title        + '</dc:title>';
+    if (opts.Props.subject) o[o.length]     = '<dc:subject>'     + opts.Props.subject      + '</dc:subject>';
+    if (opts.Props.creator) o[o.length]     = '<dc:creator>'     + opts.Props.creator      + '</dc:creator>';
+    if (opts.Props.keywords) o[o.length]    = '<cp:keywords>'    + opts.Props.keywords      + '</cp:keywords>';
+    if (opts.Props.description) o[o.length] = '<dc:description>' + opts.Props.description  + '</dc:description>';
+  }
 
 	if(cp) {
 		if(cp.CreatedDate != null) cp_doit("dcterms:created", typeof cp.CreatedDate === "string" ? cp.CreatedDate : write_w3cdtf(cp.CreatedDate, opts.WTF), {"xsi:type":"dcterms:W3CDTF"}, o, p);
