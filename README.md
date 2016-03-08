@@ -1,9 +1,10 @@
 # xlsx-style
 
-Parser and writer for various spreadsheet formats.  Pure-JS cleanroom implementation from official specifications and related documents.
+Parser and writer for various spreadsheet formats.  Pure-JS cleanroom
+implementation from official specifications and related documents.
 
 # About this fork
-**NOTE:** [This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
+[This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
 It is extended to enable cell formats to be read from and written to .xlsx workbooks.
 The intent is to provide a temporary means of using these features in practice, and ultimately to merge this into the primary project.
 Report any issues to https://github.com/protobi/js-xlsx/issues.
@@ -518,10 +519,6 @@ The exported `write` and `writeFile` functions accept an options argument:
 | bookType    | 'xlsx'  | Type of Workbook ("xlsx" or "xlsm" or "xlsb") |
 | showGridLines | true | Show grid lines on all pages  (note capital L) |
 | tabSelected | '1' | Initial tab selected |
-| Props       | null | Workbook properties |
-
-
-
 
 - `bookSST` is slower and more memory intensive, but has better compatibility
   with older versions of iOS Numbers
@@ -532,9 +529,6 @@ The exported `write` and `writeFile` functions accept an options argument:
   third-party readers.  Excel itself does not usually write cells with type `d`
   so non-Excel tools may ignore the data or blow up in the presence of dates.
 - showGridLines and tabSelected are currently used when generating an XLSX file but not yet parse.
-- Props specifies workbook properties
-   
-
 
 
 ## Cell Styles
@@ -564,7 +558,7 @@ top-level attributes: `fill`, `font`, `numFmt`, `alignment`, and `border`.
 |                 |                |  `"0.00%;\\(0.00%\\);\\-;@"` // string specifying a custom format, escaping special characters
 |                 |                |  `"m/dd/yy"` // string a date format using Excel's format notation
 | alignment       | vertical       | `"bottom"||"center"||"top"`
-|                 | horizontal     | `"bottom"||"center"||"top"`
+|                 | horizontal     | `"left"||"center"||"right"`
 |                 | wrapText       |  `true || false`
 |                 | readingOrder   |  `2` // for right-to-left
 |                 | textRotation   | Number from `0` to `180` or `255` (default is `0`)
