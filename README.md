@@ -1,9 +1,7 @@
 # xlsx-style
 
-Parser and writer for various spreadsheet formats.  Pure-JS cleanroom
-implementation from official specifications and related documents.
+Parser and writer for various spreadsheet formats.  Pure-JS cleanroom implementation from official specifications and related documents.
 
-# About this fork
 ---
 **NOTE:** [This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
 It is extended to enable cell formats to be read from and written to .xlsx workbooks.
@@ -552,7 +550,7 @@ top-level attributes: `fill`, `font`, `numFmt`, `alignment`, and `border`.
 |                 |                |  `"0.00%;\\(0.00%\\);\\-;@"` // string specifying a custom format, escaping special characters
 |                 |                |  `"m/dd/yy"` // string a date format using Excel's format notation
 | alignment       | vertical       | `"bottom"||"center"||"top"`
-|                 | horizontal     | `"left"||"center"||"right"`
+|                 | horizontal     | `"bottom"||"center"||"top"`
 |                 | wrapText       |  `true || false`
 |                 | readingOrder   |  `2` // for right-to-left
 |                 | textRotation   | Number from `0` to `180` or `255` (default is `0`)
