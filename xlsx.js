@@ -4,7 +4,7 @@
 /*jshint funcscope:true, eqnull:true */
 var XLSX = {};
 (function make_xlsx(XLSX){
-XLSX.version = '0.8.9';
+XLSX.version = '0.8.0';
 var current_codepage = 1200, current_cptable;
 if(typeof module !== "undefined" && typeof require !== 'undefined') {
 	if(typeof cptable === 'undefined') cptable = require('./dist/cpexcel');
@@ -7609,8 +7609,19 @@ function write_ws_xml_pagesetup(setup) {
     horizontalDpi : setup.horizontalDpi || '4294967292',
     verticalDpi : setup.verticalDpi || '4294967292'
   })
+  console.log(pageSetup);
   return pageSetup;
 }
+
+//<pageSetup scale="90" orientation="portrait" horizontalDpi="4294967292" verticalDpi="4294967292"/>
+//<rowBreaks count="1" manualBreakCount="1">
+// <brk id="8" max="16383" man="1"/>
+//</rowBreaks>
+//<colBreaks count="1" manualBreakCount="1">
+//    <brk id="8" max="1048575" man="1"/>
+//</colBreaks>
+
+
 
 
 function parse_ws_xml_hlinks(s, data, rels) {
@@ -7841,7 +7852,7 @@ function write_ws_xml(idx, opts, wb) {
 
   var sheetView = writextag('sheetView', null,  {
     showGridLines: opts.showGridLines == false ? '0' : '1',
-    tabSelected: opts.tabSelected === undefined ? '0' :  opts.tabSelected,
+    tabSelected: opts.tabSelected === undefined ? '0' :  opts.tabSelected,  // see issue #26, need to set WorkbookViews if this is set
     workbookViewId: opts.workbookViewId === undefined ? '0' : opts.workbookViewId
   });
   o[o.length] = writextag('sheetViews', sheetView);
@@ -7859,6 +7870,7 @@ function write_ws_xml(idx, opts, wb) {
   if (ws['!pageSetup'] !== undefined) o[o.length] =  write_ws_xml_pagesetup(ws['!pageSetup'])
   if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
   if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
+
 
 	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
 	return o.join("");
