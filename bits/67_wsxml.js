@@ -551,7 +551,7 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 
   var sheetView = writextag('sheetView', null,  {
     showGridLines: opts.showGridLines == false ? '0' : '1',
-    tabSelected: opts.tabSelected === undefined ? '1' :  opts.tabSelected,
+    tabSelected: opts.tabSelected === undefined ? '0' :  opts.tabSelected,
     workbookViewId: opts.workbookViewId === undefined ? '0' : opts.workbookViewId
   });
   o[o.length] = writextag('sheetViews', sheetView);
