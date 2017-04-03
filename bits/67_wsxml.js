@@ -507,8 +507,8 @@ function write_ws_xml_data(ws/*:Worksheet*/, opts, idx/*:number*/, wb/*:Workbook
 }
 
 var WS_XML_ROOT = writextag('worksheet', null, {
-	'xmlns': XMLNS.main[0],
-	'xmlns:r': XMLNS.r
+  'xmlns': XMLNS.main[0],
+  'xmlns:r': XMLNS.r
 });
 
 function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
@@ -547,7 +547,7 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 	o[o.length] = (writextag('dimension', null, {'ref': ref}));
   var sheetView = writextag('sheetView', null,  {
     showGridLines: opts.showGridLines == false ? '0' : '1',
-    tabSelected: opts.tabSelected === undefined ? '0' :  opts.tabSelected,  // see issue #26, need to set WorkbookViews if this is set
+    tabSelected: opts.tabSelected === undefined ? '0' : opts.tabSelected,  // see issue #26, need to set WorkbookViews if this is set
     workbookViewId: opts.workbookViewId === undefined ? '0' : opts.workbookViewId
   });
   o[o.length] = writextag('sheetViews', sheetView);
@@ -643,9 +643,9 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
   if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
   if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
 
-  if (ws['!pageSetup'] !== undefined) o[o.length] =  write_ws_xml_pagesetup(ws['!pageSetup']);
-  if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks']);
-  if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks']);
+  if (ws['!pageSetup'] !== undefined) o[o.length] = write_ws_xml_pagesetup(ws['!pageSetup']);
+  if (ws['!rowBreaks'] !== undefined) o[o.length] = write_ws_xml_row_breaks(ws['!rowBreaks']);
+  if (ws['!colBreaks'] !== undefined) o[o.length] = write_ws_xml_col_breaks(ws['!colBreaks']);
 
 
 	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
@@ -653,21 +653,19 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 }
 
 function write_ws_xml_row_breaks(breaks) {
-  console.log("Writing breaks")
   var brk = [];
-  for (var i=0; i<breaks.length; i++) {
-    var thisBreak = ''+ (breaks[i]);
-    var nextBreak = '' + (breaks[i+1] || '16383');
+  for (var i = 0; i < breaks.length; i++) {
+    var thisBreak = '' + (breaks[i]);
+    var nextBreak = '' + (breaks[i + 1] || '16383');
     brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
   }
   return writextag('rowBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
 }
 function write_ws_xml_col_breaks(breaks) {
-  console.log("Writing breaks");
   var brk = [];
-  for (var i=0; i<breaks.length; i++) {
-    var thisBreak = ''+ (breaks[i]);
-    var nextBreak = '' + (breaks[i+1] || '1048575');
+  for (var i = 0; i < breaks.length; i++) {
+    var thisBreak = '' + (breaks[i]);
+    var nextBreak = '' + (breaks[i + 1] || '1048575');
     brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
   }
   return writextag('colBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
