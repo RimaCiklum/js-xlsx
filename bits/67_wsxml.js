@@ -532,6 +532,9 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 
 	o[o.length] = write_ws_xml_sheetviews(ws, opts, idx, wb);
 
+	if (ws['!freeze']) {
+		pane = writextag('pane',null, ws['!freeze'])
+	}
 	/* TODO: store in WB, process styles */
 	if(opts.sheetFormat) o[o.length] = (writextag('sheetFormatPr', null, {
 		defaultRowHeight:opts.sheetFormat.defaultRowHeight||'16',

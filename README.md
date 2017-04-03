@@ -1,10 +1,9 @@
 # xlsx-style
 
-Parser and writer for various spreadsheet formats.  Pure-JS cleanroom
-implementation from official specifications and related documents.
+Parser and writer for various spreadsheet formats.  Pure-JS cleanroom implementation from official specifications and related documents.
 
-## About this fork
-[This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
+# About this fork
+**NOTE:** [This project](https://github.com/SheetJS/js-xlsx/tree/beta) is a fork of the original (and awesome) [SheetJS/xlsx](https://github.com/SheetJS/js-xlsx) project.
 It is extended to enable cell formats to be read from and written to .xlsx workbooks.
 The intent is to provide a temporary means of using these features in practice, and ultimately to merge this into the primary project.
 Report any issues to https://github.com/protobi/js-xlsx/issues.
@@ -13,7 +12,7 @@ For those contributing to this fork:
 * `master` is the main branch, which follows the original repo to enable a future pull request.
 * `beta` branch is published to npm and bower to make this fork available for use.
 
-## Supported formats
+# Supported formats
 
 Supported read formats:
 
@@ -258,20 +257,7 @@ XLSX.writeFile(workbook, 'out.xlsx');
 
 ```js
 /* bookType can be 'xlsx' or 'xlsm' or 'xlsb' */
-var wopts = { 
-   bookType:'xlsx', 
-  bookSST:false, 
-  type:'binary',
-  showGridLines: false,
-  defaultCellStyle: { font: { name: "Verdana", sz: 11, color: "FF00FF88"}, fill: {fgColor: {rgb: "FFFFAA00"}}},
-  Props: {
-        title: "Goldilocks",
-        description: "Girl discovers mysterious cottage in forest ",
-        creator:"Traditional folk tale",
-        keywords: "Bears; porridge; property rights; iterative optimization",
-        subject: "subject"
-      }
-  };
+var wopts = { bookType:'xlsx', bookSST:false, type:'binary' };
 
 var wbout = XLSX.write(workbook,wopts);
 
@@ -451,6 +437,15 @@ The following properties are currently used when generating an XLSX file, but no
 - `ws['!rowBreaks']`: array of row break points, e.g. `[16,32]`
 - `ws['!colBreaks']`: array of col break points, e.g. `[8,16]`
 - `ws['!pageSetup']`: `{scale: '100', orientation: 'portrait'||'landscape'}
+- `ws['!printHeader']`: array of first and last row indexes for repeat header on printing, e.g. `[1,1]` to repeat just first row
+- `ws['!freeze']`:  string cell reference for breakpoint, e.g. the following will freeze the first row and first column: 
+        {
+           xSplit: "1",
+           ySplit: "1",
+           topLeftCell: "B2",
+           activePane: "bottomRight",
+           state: "frozen"
+         }
 
 
 ### Workbook Object
@@ -519,8 +514,12 @@ The exported `write` and `writeFile` functions accept an options argument:
 | cellDates   | false   | Store dates as type `d` (default is `n`) |
 | bookSST     | false   | Generate Shared String Table ** |
 | bookType    | 'xlsx'  | Type of Workbook ("xlsx" or "xlsm" or "xlsb") |
-| showGridLines | true | Show grid lines on all pages  (note capital L) |
+| showGridLines | true | Show gridlines on all pages  |
 | tabSelected | '1' | Initial tab selected |
+| Props       | null | Workbook properties |
+
+
+
 
 - `bookSST` is slower and more memory intensive, but has better compatibility
   with older versions of iOS Numbers
@@ -531,6 +530,9 @@ The exported `write` and `writeFile` functions accept an options argument:
   third-party readers.  Excel itself does not usually write cells with type `d`
   so non-Excel tools may ignore the data or blow up in the presence of dates.
 - showGridLines and tabSelected are currently used when generating an XLSX file but not yet parse.
+- Props specifies workbook properties
+   
+
 
 
 ## Cell Styles
@@ -547,21 +549,21 @@ top-level attributes: `fill`, `font`, `numFmt`, `alignment`, and `border`.
 | font            | name           |  `"Calibri"` // default
 |                 | sz             |  `"11"` // font size in points
 |                 | color          |  `COLOR_SPEC`
-|                 | bold           |  `true || false`
-|                 | underline      |  `true || false`
-|                 | italic         |  `true || false`
-|                 | strike         |  `true || false`
-|                 | outline        |  `true || false`
-|                 | shadow         |  `true || false`
-|                 | vertAlign      |  `true || false`
+|                 | bold           |  `true` or `false`
+|                 | underline      |  `true` or `false`
+|                 | italic         |  `true` or `false`
+|                 | strike         |  `true` or `false`
+|                 | outline        |  `true` or `false`
+|                 | shadow         |  `true` or `false`
+|                 | vertAlign      |  `true` or `false`
 | numFmt          |                |  `"0"`  // integer index to built in formats, see StyleBuilder.SSF property
 |                 |                |  `"0.00%"` // string matching a built-in format, see StyleBuilder.SSF
 |                 |                |  `"0.0%"`  // string specifying a custom format
 |                 |                |  `"0.00%;\\(0.00%\\);\\-;@"` // string specifying a custom format, escaping special characters
 |                 |                |  `"m/dd/yy"` // string a date format using Excel's format notation
-| alignment       | vertical       | `"bottom"||"center"||"top"`
-|                 | horizontal     | `"left"||"center"||"right"`
-|                 | wrapText       |  `true || false`
+| alignment       | vertical       | `"bottom"` or `"center"` or `"top"`
+|                 | horizontal     | `"bottom"` or `"center"` or `"top"`
+|                 | wrapText       |  `true ` or ` false`
 |                 | readingOrder   |  `2` // for right-to-left
 |                 | textRotation   | Number from `0` to `180` or `255` (default is `0`)
 |                 |                |  `90` is rotated up 90 degrees
@@ -574,8 +576,8 @@ top-level attributes: `fill`, `font`, `numFmt`, `alignment`, and `border`.
 |                 | left           | `{ style: BORDER_STYLE, color: COLOR_SPEC }`
 |                 | right          | `{ style: BORDER_STYLE, color: COLOR_SPEC }`
 |                 | diagonal       | `{ style: BORDER_STYLE, color: COLOR_SPEC }`
-|                 | diagonalUp     | `true||false`
-|                 | diagonalDown   | `true||false`
+|                 | diagonalUp     | `true` or `false`
+|                 | diagonalDown   | `true` or `false`
 
 
 **COLOR_SPEC**: Colors for `fill`, `font`, and `border` are specified as objects, either:
