@@ -4,7 +4,7 @@
 /*global global, exports, module, require:false, process:false, Buffer:false, ArrayBuffer:false */
 var XLSX = {};
 function make_xlsx_lib(XLSX){
-XLSX.version = '0.16.6';
+XLSX.version = '0.8.20';
 var current_codepage = 1200, current_ansi = 1252;
 
 var VALID_ANSI = [ 874, 932, 936, 949, 950 ];
@@ -1251,252 +1251,27 @@ function dateNF_fix(str/*:string*/, dateNF/*:string*/, match/*:Array<string>*/)/
 }
 
 var DO_NOT_EXPORT_CFB = true;
-/*::
-declare var Base64:any;
-declare var ReadShift:any;
-declare var CheckField:any;
-declare var prep_blob:any;
-declare var __readUInt32LE:any;
-declare var __readInt32LE:any;
-declare var __toBuffer:any;
-declare var __utf16le:any;
-declare var bconcat:any;
-declare var s2a:any;
-declare var chr0:any;
-declare var chr1:any;
-declare var has_buf:boolean;
-declare var new_buf:any;
-declare var new_raw_buf:any;
-declare var new_unsafe_buf:any;
-*/
-/* cfb.js (C) 2013-present SheetJS -- http://sheetjs.com */
+/* cfb.js (C) 2013-2014 SheetJS -- http://sheetjs.com */
 /* vim: set ts=2: */
 /*jshint eqnull:true */
-/*exported CFB */
-/*global Uint8Array:false, Uint16Array:false */
 
-/*::
-declare var DO_NOT_EXPORT_CFB:?boolean;
-type SectorEntry = {
-	name?:string;
-	nodes?:Array<number>;
-	data:RawBytes;
-};
-type SectorList = {
-	[k:string|number]:SectorEntry;
-	name:?string;
-	fat_addrs:Array<number>;
-	ssz:number;
-}
-type CFBFiles = {[n:string]:CFBEntry};
-*/
-/* crc32.js (C) 2014-present SheetJS -- http://sheetjs.com */
-/* vim: set ts=2: */
-/*exported CRC32 */
-var CRC32;
-(function (factory) {
-	/*jshint ignore:start */
-	/*eslint-disable */
-	factory(CRC32 = {});
-	/*eslint-enable */
-	/*jshint ignore:end */
-}(function(CRC32) {
-CRC32.version = '1.2.0';
-/* see perf/crc32table.js */
-/*global Int32Array */
-function signed_crc_table()/*:any*/ {
-	var c = 0, table/*:Array<number>*/ = new Array(256);
-
-	for(var n =0; n != 256; ++n){
-		c = n;
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		c = ((c&1) ? (-306674912 ^ (c >>> 1)) : (c >>> 1));
-		table[n] = c;
-	}
-
-	return typeof Int32Array !== 'undefined' ? new Int32Array(table) : table;
-}
-
-var T = signed_crc_table();
-function crc32_bstr(bstr/*:string*/, seed/*:number*/)/*:number*/ {
-	var C = seed ^ -1, L = bstr.length - 1;
-	for(var i = 0; i < L;) {
-		C = (C>>>8) ^ T[(C^bstr.charCodeAt(i++))&0xFF];
-		C = (C>>>8) ^ T[(C^bstr.charCodeAt(i++))&0xFF];
-	}
-	if(i === L) C = (C>>>8) ^ T[(C ^ bstr.charCodeAt(i))&0xFF];
-	return C ^ -1;
-}
-
-function crc32_buf(buf/*:Uint8Array|Array<number>*/, seed/*:number*/)/*:number*/ {
-	if(buf.length > 10000) return crc32_buf_8(buf, seed);
-	var C = seed ^ -1, L = buf.length - 3;
-	for(var i = 0; i < L;) {
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-	}
-	while(i < L+3) C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-	return C ^ -1;
-}
-
-function crc32_buf_8(buf/*:Uint8Array|Array<number>*/, seed/*:number*/)/*:number*/ {
-	var C = seed ^ -1, L = buf.length - 7;
-	for(var i = 0; i < L;) {
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-		C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-	}
-	while(i < L+7) C = (C>>>8) ^ T[(C^buf[i++])&0xFF];
-	return C ^ -1;
-}
-
-function crc32_str(str/*:string*/, seed/*:number*/)/*:number*/ {
-	var C = seed ^ -1;
-	for(var i = 0, L=str.length, c, d; i < L;) {
-		c = str.charCodeAt(i++);
-		if(c < 0x80) {
-			C = (C>>>8) ^ T[(C ^ c)&0xFF];
-		} else if(c < 0x800) {
-			C = (C>>>8) ^ T[(C ^ (192|((c>>6)&31)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|(c&63)))&0xFF];
-		} else if(c >= 0xD800 && c < 0xE000) {
-			c = (c&1023)+64; d = str.charCodeAt(i++)&1023;
-			C = (C>>>8) ^ T[(C ^ (240|((c>>8)&7)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|((c>>2)&63)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|((d>>6)&15)|((c&3)<<4)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|(d&63)))&0xFF];
-		} else {
-			C = (C>>>8) ^ T[(C ^ (224|((c>>12)&15)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|((c>>6)&63)))&0xFF];
-			C = (C>>>8) ^ T[(C ^ (128|(c&63)))&0xFF];
-		}
-	}
-	return C ^ -1;
-}
-CRC32.table = T;
-CRC32.bstr = crc32_bstr;
-CRC32.buf = crc32_buf;
-CRC32.str = crc32_str;
-}));
-/* [MS-CFB] v20171201 */
+/* [MS-CFB] v20130118 */
 var CFB = (function _CFB(){
-var exports/*:CFBModule*/ = /*::(*/{}/*:: :any)*/;
-exports.version = '1.1.4';
-/* [MS-CFB] 2.6.4 */
-function namecmp(l/*:string*/, r/*:string*/)/*:number*/ {
-	var L = l.split("/"), R = r.split("/");
-	for(var i = 0, c = 0, Z = Math.min(L.length, R.length); i < Z; ++i) {
-		if((c = L[i].length - R[i].length)) return c;
-		if(L[i] != R[i]) return L[i] < R[i] ? -1 : 1;
-	}
-	return L.length - R.length;
-}
-function dirname(p/*:string*/)/*:string*/ {
-	if(p.charAt(p.length - 1) == "/") return (p.slice(0,-1).indexOf("/") === -1) ? p : dirname(p.slice(0, -1));
-	var c = p.lastIndexOf("/");
-	return (c === -1) ? p : p.slice(0, c+1);
-}
-
-function filename(p/*:string*/)/*:string*/ {
-	if(p.charAt(p.length - 1) == "/") return filename(p.slice(0, -1));
-	var c = p.lastIndexOf("/");
-	return (c === -1) ? p : p.slice(c+1);
-}
-/* -------------------------------------------------------------------------- */
-/* DOS Date format:
-   high|YYYYYYYm.mmmddddd.HHHHHMMM.MMMSSSSS|low
-   add 1980 to stored year
-   stored second should be doubled
-*/
-
-/* write JS date to buf as a DOS date */
-function write_dos_date(buf/*:CFBlob*/, date/*:Date|string*/) {
-	if(typeof date === "string") date = new Date(date);
-	var hms/*:number*/ = date.getHours();
-	hms = hms << 6 | date.getMinutes();
-	hms = hms << 5 | (date.getSeconds()>>>1);
-	buf.write_shift(2, hms);
-	var ymd/*:number*/ = (date.getFullYear() - 1980);
-	ymd = ymd << 4 | (date.getMonth()+1);
-	ymd = ymd << 5 | date.getDate();
-	buf.write_shift(2, ymd);
-}
-
-/* read four bytes from buf and interpret as a DOS date */
-function parse_dos_date(buf/*:CFBlob*/)/*:Date*/ {
-	var hms = buf.read_shift(2) & 0xFFFF;
-	var ymd = buf.read_shift(2) & 0xFFFF;
-	var val = new Date();
-	var d = ymd & 0x1F; ymd >>>= 5;
-	var m = ymd & 0x0F; ymd >>>= 4;
-	val.setMilliseconds(0);
-	val.setFullYear(ymd + 1980);
-	val.setMonth(m-1);
-	val.setDate(d);
-	var S = hms & 0x1F; hms >>>= 5;
-	var M = hms & 0x3F; hms >>>= 6;
-	val.setHours(hms);
-	val.setMinutes(M);
-	val.setSeconds(S<<1);
-	return val;
-}
-function parse_extra_field(blob/*:CFBlob*/)/*:any*/ {
-	prep_blob(blob, 0);
-	var o = /*::(*/{}/*:: :any)*/;
-	var flags = 0;
-	while(blob.l <= blob.length - 4) {
-		var type = blob.read_shift(2);
-		var sz = blob.read_shift(2), tgt = blob.l + sz;
-		var p = {};
-		switch(type) {
-			/* UNIX-style Timestamps */
-			case 0x5455: {
-				flags = blob.read_shift(1);
-				if(flags & 1) p.mtime = blob.read_shift(4);
-				/* for some reason, CD flag corresponds to LFH */
-				if(sz > 5) {
-					if(flags & 2) p.atime = blob.read_shift(4);
-					if(flags & 4) p.ctime = blob.read_shift(4);
-				}
-				if(p.mtime) p.mt = new Date(p.mtime*1000);
-			}
-			break;
-		}
-		blob.l = tgt;
-		o[type] = p;
-	}
-	return o;
-}
-var fs/*:: = require('fs'); */;
-function get_fs() { return fs || (fs = require('fs')); }
-function parse(file/*:RawBytes*/, options/*:CFBReadOpts*/)/*:CFBContainer*/ {
-if(file[0] == 0x50 && file[1] == 0x4b) return parse_zip(file, options);
-if(file.length < 512) throw new Error("CFB file size " + file.length + " < 512");
-var mver = 3;
-var ssz = 512;
+var exports = {};
+exports.version = '0.10.2';
+function parse(file) {
+var mver = 3; // major version
+var ssz = 512; // sector size
 var nmfs = 0; // number of mini FAT sectors
-var difat_sec_cnt = 0;
-var dir_start = 0;
-var minifat_start = 0;
-var difat_start = 0;
+var ndfs = 0; // number of DIFAT sectors
+var dir_start = 0; // first directory sector location
+var minifat_start = 0; // first mini FAT sector location
+var difat_start = 0; // first mini FAT sector location
 
-var fat_addrs/*:Array<number>*/ = []; // locations of FAT sectors
+var fat_addrs = []; // locations of FAT sectors
 
 /* [MS-CFB] 2.2 Compound File Header */
-var blob/*:CFBlob*/ = /*::(*/file.slice(0,512)/*:: :any)*/;
+var blob = file.slice(0,512);
 prep_blob(blob, 0);
 
 /* major version */
@@ -1504,23 +1279,22 @@ var mv = check_get_mver(blob);
 mver = mv[0];
 switch(mver) {
 	case 3: ssz = 512; break; case 4: ssz = 4096; break;
-	case 0: if(mv[1] == 0) return parse_zip(file, options);
-	/* falls through */
-	default: throw new Error("Major Version: Expected 3 or 4 saw " + mver);
+	default: throw "Major Version: Expected 3 or 4 saw " + mver;
 }
 
 /* reprocess header */
-if(ssz !== 512) { blob = /*::(*/file.slice(0,ssz)/*:: :any)*/; prep_blob(blob, 28 /* blob.l */); }
+if(ssz !== 512) { blob = file.slice(0,ssz); prep_blob(blob, 28 /* blob.l */); }
 /* Save header for final object */
-var header/*:RawBytes*/ = file.slice(0,ssz);
+var header = file.slice(0,ssz);
 
 check_shifts(blob, mver);
 
 // Number of Directory Sectors
-var dir_cnt/*:number*/ = blob.read_shift(4, 'i');
-if(mver === 3 && dir_cnt !== 0) throw new Error('# Directory Sectors: Expected 0 saw ' + dir_cnt);
+var nds = blob.read_shift(4, 'i');
+if(mver === 3 && nds !== 0) throw '# Directory Sectors: Expected 0 saw ' + nds;
 
 // Number of FAT Sectors
+//var nfs = blob.read_shift(4, 'i');
 blob.l += 4;
 
 // First Directory Sector Location
@@ -1542,22 +1316,22 @@ nmfs = blob.read_shift(4, 'i');
 difat_start = blob.read_shift(4, 'i');
 
 // Number of DIFAT Sectors
-difat_sec_cnt = blob.read_shift(4, 'i');
+ndfs = blob.read_shift(4, 'i');
 
 // Grab FAT Sector Locations
-for(var q = -1, j = 0; j < 109; ++j) { /* 109 = (512 - blob.l)>>>2; */
+for(var q, j = 0; j < 109; ++j) { /* 109 = (512 - blob.l)>>>2; */
 	q = blob.read_shift(4, 'i');
 	if(q<0) break;
 	fat_addrs[j] = q;
 }
 
 /** Break the file up into sectors */
-var sectors/*:Array<RawBytes>*/ = sectorify(file, ssz);
+var sectors = sectorify(file, ssz);
 
-sleuth_fat(difat_start, difat_sec_cnt, sectors, ssz, fat_addrs);
+sleuth_fat(difat_start, ndfs, sectors, ssz, fat_addrs);
 
 /** Chains */
-var sector_list/*:SectorList*/ = make_sector_list(sectors, dir_start, fat_addrs, ssz);
+var sector_list = make_sector_list(sectors, dir_start, fat_addrs, ssz);
 
 sector_list[dir_start].name = "!Directory";
 if(nmfs > 0 && minifat_start !== ENDOFCHAIN) sector_list[minifat_start].name = "!MiniFAT";
@@ -1566,49 +1340,50 @@ sector_list.fat_addrs = fat_addrs;
 sector_list.ssz = ssz;
 
 /* [MS-CFB] 2.6.1 Compound File Directory Entry */
-var files/*:CFBFiles*/ = {}, Paths/*:Array<string>*/ = [], FileIndex/*:CFBFileIndex*/ = [], FullPaths/*:Array<string>*/ = [];
-read_directory(dir_start, sector_list, sectors, Paths, nmfs, files, FileIndex, minifat_start);
+var files = {}, Paths = [], FileIndex = [], FullPaths = [], FullPathDir = {};
+read_directory(dir_start, sector_list, sectors, Paths, nmfs, files, FileIndex);
 
-build_full_paths(FileIndex, FullPaths, Paths);
-Paths.shift();
+build_full_paths(FileIndex, FullPathDir, FullPaths, Paths);
 
-var o = {
+var root_name = Paths.shift();
+Paths.root = root_name;
+
+/* [MS-CFB] 2.6.4 (Unicode 3.0.1 case conversion) */
+var find_path = make_find_path(FullPaths, Paths, FileIndex, files, root_name);
+
+return {
+	raw: {header: header, sectors: sectors},
 	FileIndex: FileIndex,
-	FullPaths: FullPaths
+	FullPaths: FullPaths,
+	FullPathDir: FullPathDir,
+	find: find_path
 };
-
-// $FlowIgnore
-if(options && options.raw) o.raw = {header: header, sectors: sectors};
-return o;
 } // parse
 
 /* [MS-CFB] 2.2 Compound File Header -- read up to major version */
-function check_get_mver(blob/*:CFBlob*/)/*:[number, number]*/ {
-	if(blob[blob.l] == 0x50 && blob[blob.l + 1] == 0x4b) return [0, 0];
+function check_get_mver(blob) {
 	// header signature 8
 	blob.chk(HEADER_SIGNATURE, 'Header Signature: ');
 
 	// clsid 16
-	//blob.chk(HEADER_CLSID, 'CLSID: ');
-	blob.l += 16;
+	blob.chk(HEADER_CLSID, 'CLSID: ');
 
 	// minor version 2
-	var mver/*:number*/ = blob.read_shift(2, 'u');
+	var mver = blob.read_shift(2, 'u');
 
 	return [blob.read_shift(2,'u'), mver];
 }
-function check_shifts(blob/*:CFBlob*/, mver/*:number*/)/*:void*/ {
+function check_shifts(blob, mver) {
 	var shift = 0x09;
 
 	// Byte Order
-	//blob.chk('feff', 'Byte Order: '); // note: some writers put 0xffff
-	blob.l += 2;
+	blob.chk('feff', 'Byte Order: ');
 
 	// Sector Shift
 	switch((shift = blob.read_shift(2))) {
-		case 0x09: if(mver != 3) throw new Error('Sector Shift: Expected 9 saw ' + shift); break;
-		case 0x0c: if(mver != 4) throw new Error('Sector Shift: Expected 12 saw ' + shift); break;
-		default: throw new Error('Sector Shift: Expected 9 or 12 saw ' + shift);
+		case 0x09: if(mver !== 3) throw 'MajorVersion/SectorShift Mismatch'; break;
+		case 0x0c: if(mver !== 4) throw 'MajorVersion/SectorShift Mismatch'; break;
+		default: throw 'Sector Shift: Expected 9 or 12 saw ' + shift;
 	}
 
 	// Mini Sector Shift
@@ -1619,18 +1394,18 @@ function check_shifts(blob/*:CFBlob*/, mver/*:number*/)/*:void*/ {
 }
 
 /** Break the file up into sectors */
-function sectorify(file/*:RawBytes*/, ssz/*:number*/)/*:Array<RawBytes>*/ {
+function sectorify(file, ssz) {
 	var nsectors = Math.ceil(file.length/ssz)-1;
-	var sectors/*:Array<RawBytes>*/ = [];
+	var sectors = new Array(nsectors);
 	for(var i=1; i < nsectors; ++i) sectors[i-1] = file.slice(i*ssz,(i+1)*ssz);
 	sectors[nsectors-1] = file.slice(nsectors*ssz);
 	return sectors;
 }
 
 /* [MS-CFB] 2.6.4 Red-Black Tree */
-function build_full_paths(FI/*:CFBFileIndex*/, FP/*:Array<string>*/, Paths/*:Array<string>*/)/*:void*/ {
+function build_full_paths(FI, FPD, FP, Paths) {
 	var i = 0, L = 0, R = 0, C = 0, j = 0, pl = Paths.length;
-	var dad/*:Array<number>*/ = [], q/*:Array<number>*/ = [];
+	var dad = new Array(pl), q = new Array(pl);
 
 	for(; i < pl; ++i) { dad[i]=q[i]=i; FP[i]=Paths[i]; }
 
@@ -1642,53 +1417,57 @@ function build_full_paths(FI/*:CFBFileIndex*/, FP/*:Array<string>*/, Paths/*:Arr
 			if(R !== -1 && dad[R] !== R) dad[i] = dad[R];
 		}
 		if(C !== -1 /*NOSTREAM*/) dad[C] = i;
-		if(L !== -1 && i != dad[i]) { dad[L] = dad[i]; if(q.lastIndexOf(L) < j) q.push(L); }
-		if(R !== -1 && i != dad[i]) { dad[R] = dad[i]; if(q.lastIndexOf(R) < j) q.push(R); }
+		if(L !== -1) { dad[L] = dad[i]; q.push(L); }
+		if(R !== -1) { dad[R] = dad[i]; q.push(R); }
 	}
-	for(i=1; i < pl; ++i) if(dad[i] === i) {
+	for(i=1; i !== pl; ++i) if(dad[i] === i) {
 		if(R !== -1 /*NOSTREAM*/ && dad[R] !== R) dad[i] = dad[R];
 		else if(L !== -1 && dad[L] !== L) dad[i] = dad[L];
 	}
 
 	for(i=1; i < pl; ++i) {
 		if(FI[i].type === 0 /* unknown */) continue;
-		j = i;
-		if(j != dad[j]) do {
-			j = dad[j];
+		j = dad[i];
+		if(j === 0) FP[i] = FP[0] + "/" + FP[i];
+		else while(j !== 0) {
 			FP[i] = FP[j] + "/" + FP[i];
-		} while (j !== 0 && -1 !== dad[j] && j != dad[j]);
-		dad[i] = -1;
+			j = dad[j];
+		}
+		dad[i] = 0;
 	}
 
 	FP[0] += "/";
 	for(i=1; i < pl; ++i) {
 		if(FI[i].type !== 2 /* stream */) FP[i] += "/";
+		FPD[FP[i]] = FI[i];
 	}
 }
 
-function get_mfat_entry(entry/*:CFBEntry*/, payload/*:RawBytes*/, mini/*:?RawBytes*/)/*:CFBlob*/ {
-	var start = entry.start, size = entry.size;
-	//return (payload.slice(start*MSSZ, start*MSSZ + size)/*:any*/);
-	var o = [];
-	var idx = start;
-	while(mini && size > 0 && idx >= 0) {
-		o.push(payload.slice(idx * MSSZ, idx * MSSZ + MSSZ));
-		size -= MSSZ;
-		idx = __readInt32LE(mini, idx * 4);
-	}
-	if(o.length === 0) return (new_buf(0)/*:any*/);
-	return (bconcat(o).slice(0, entry.size)/*:any*/);
+/* [MS-CFB] 2.6.4 */
+function make_find_path(FullPaths, Paths, FileIndex, files, root_name) {
+	var UCFullPaths = new Array(FullPaths.length);
+	var UCPaths = new Array(Paths.length), i;
+	for(i = 0; i < FullPaths.length; ++i) UCFullPaths[i] = FullPaths[i].toUpperCase().replace(chr0,'').replace(chr1,'!');
+	for(i = 0; i < Paths.length; ++i) UCPaths[i] = Paths[i].toUpperCase().replace(chr0,'').replace(chr1,'!');
+	return function find_path(path) {
+		var k;
+		if(path.charCodeAt(0) === 47 /* "/" */) { k=true; path = root_name + path; }
+		else k = path.indexOf("/") !== -1;
+		var UCPath = path.toUpperCase().replace(chr0,'').replace(chr1,'!');
+		var w = k === true ? UCFullPaths.indexOf(UCPath) : UCPaths.indexOf(UCPath);
+		if(w === -1) return null;
+		return k === true ? FileIndex[w] : files[Paths[w]];
+	};
 }
 
 /** Chase down the rest of the DIFAT chain to build a comprehensive list
-    DIFAT chains by storing the next sector number as the last 32 bits */
-function sleuth_fat(idx/*:number*/, cnt/*:number*/, sectors/*:Array<RawBytes>*/, ssz/*:number*/, fat_addrs)/*:void*/ {
-	var q/*:number*/ = ENDOFCHAIN;
+    DIFAT chains by storing the next sector number as the last 32 bytes */
+function sleuth_fat(idx, cnt, sectors, ssz, fat_addrs) {
+	var q;
 	if(idx === ENDOFCHAIN) {
-		if(cnt !== 0) throw new Error("DIFAT chain shorter than expected");
+		if(cnt !== 0) throw "DIFAT chain shorter than expected";
 	} else if(idx !== -1 /*FREESECT*/) {
 		var sector = sectors[idx], m = (ssz>>>2)-1;
-		if(!sector) return;
 		for(var i = 0; i < m; ++i) {
 			if((q = __readInt32LE(sector,i*4)) === ENDOFCHAIN) break;
 			fat_addrs.push(q);
@@ -1698,63 +1477,63 @@ function sleuth_fat(idx/*:number*/, cnt/*:number*/, sectors/*:Array<RawBytes>*/,
 }
 
 /** Follow the linked list of sectors for a given starting point */
-function get_sector_list(sectors/*:Array<RawBytes>*/, start/*:number*/, fat_addrs/*:Array<number>*/, ssz/*:number*/, chkd/*:?Array<boolean>*/)/*:SectorEntry*/ {
-	var buf/*:Array<number>*/ = [], buf_chain/*:Array<any>*/ = [];
-	if(!chkd) chkd = [];
-	var modulus = ssz - 1, j = 0, jj = 0;
+function get_sector_list(sectors, start, fat_addrs, ssz, chkd) {
+	var sl = sectors.length;
+	var buf, buf_chain;
+	if(!chkd) chkd = new Array(sl);
+	var modulus = ssz - 1, j, jj;
+	buf = [];
+	buf_chain = [];
 	for(j=start; j>=0;) {
 		chkd[j] = true;
 		buf[buf.length] = j;
 		buf_chain.push(sectors[j]);
 		var addr = fat_addrs[Math.floor(j*4/ssz)];
 		jj = ((j*4) & modulus);
-		if(ssz < 4 + jj) throw new Error("FAT boundary crossed: " + j + " 4 "+ssz);
-		if(!sectors[addr]) break;
+		if(ssz < 4 + jj) throw "FAT boundary crossed: " + j + " 4 "+ssz;
 		j = __readInt32LE(sectors[addr], jj);
 	}
 	return {nodes: buf, data:__toBuffer([buf_chain])};
 }
 
 /** Chase down the sector linked lists */
-function make_sector_list(sectors/*:Array<RawBytes>*/, dir_start/*:number*/, fat_addrs/*:Array<number>*/, ssz/*:number*/)/*:SectorList*/ {
-	var sl = sectors.length, sector_list/*:SectorList*/ = ([]/*:any*/);
-	var chkd/*:Array<boolean>*/ = [], buf/*:Array<number>*/ = [], buf_chain/*:Array<RawBytes>*/ = [];
-	var modulus = ssz - 1, i=0, j=0, k=0, jj=0;
+function make_sector_list(sectors, dir_start, fat_addrs, ssz) {
+	var sl = sectors.length, sector_list = new Array(sl);
+	var chkd = new Array(sl), buf, buf_chain;
+	var modulus = ssz - 1, i, j, k, jj;
 	for(i=0; i < sl; ++i) {
-		buf = ([]/*:Array<number>*/);
+		buf = [];
 		k = (i + dir_start); if(k >= sl) k-=sl;
-		if(chkd[k]) continue;
+		if(chkd[k] === true) continue;
 		buf_chain = [];
-		var seen = [];
 		for(j=k; j>=0;) {
-			seen[j] = true;
 			chkd[j] = true;
 			buf[buf.length] = j;
 			buf_chain.push(sectors[j]);
-			var addr/*:number*/ = fat_addrs[Math.floor(j*4/ssz)];
+			var addr = fat_addrs[Math.floor(j*4/ssz)];
 			jj = ((j*4) & modulus);
-			if(ssz < 4 + jj) throw new Error("FAT boundary crossed: " + j + " 4 "+ssz);
-			if(!sectors[addr]) break;
+			if(ssz < 4 + jj) throw "FAT boundary crossed: " + j + " 4 "+ssz;
 			j = __readInt32LE(sectors[addr], jj);
-			if(seen[j]) break;
 		}
-		sector_list[k] = ({nodes: buf, data:__toBuffer([buf_chain])}/*:SectorEntry*/);
+		sector_list[k] = {nodes: buf, data:__toBuffer([buf_chain])};
 	}
 	return sector_list;
 }
 
 /* [MS-CFB] 2.6.1 Compound File Directory Entry */
-function read_directory(dir_start/*:number*/, sector_list/*:SectorList*/, sectors/*:Array<RawBytes>*/, Paths/*:Array<string>*/, nmfs, files, FileIndex, mini) {
+function read_directory(dir_start, sector_list, sectors, Paths, nmfs, files, FileIndex) {
+	var blob;
 	var minifat_store = 0, pl = (Paths.length?2:0);
 	var sector = sector_list[dir_start].data;
-	var i = 0, namelen = 0, name;
+	var i = 0, namelen = 0, name, o, ctime, mtime;
 	for(; i < sector.length; i+= 128) {
-		var blob/*:CFBlob*/ = /*::(*/sector.slice(i, i+128)/*:: :any)*/;
+		blob = sector.slice(i, i+128);
 		prep_blob(blob, 64);
 		namelen = blob.read_shift(2);
+		if(namelen === 0) continue;
 		name = __utf16le(blob,0,namelen-pl);
 		Paths.push(name);
-		var o/*:CFBEntry*/ = ({
+		o = {
 			name:  name,
 			type:  blob.read_shift(1),
 			color: blob.read_shift(1),
@@ -1762,17 +1541,18 @@ function read_directory(dir_start/*:number*/, sector_list/*:SectorList*/, sector
 			R:     blob.read_shift(4, 'i'),
 			C:     blob.read_shift(4, 'i'),
 			clsid: blob.read_shift(16),
-			state: blob.read_shift(4, 'i'),
-			start: 0,
-			size: 0
-		});
-		var ctime/*:number*/ = blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2);
-		if(ctime !== 0) o.ct = read_date(blob, blob.l-8);
-		var mtime/*:number*/ = blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2);
-		if(mtime !== 0) o.mt = read_date(blob, blob.l-8);
+			state: blob.read_shift(4, 'i')
+		};
+		ctime = blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2);
+		if(ctime !== 0) {
+			o.ctime = ctime; o.ct = read_date(blob, blob.l-8);
+		}
+		mtime = blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2) + blob.read_shift(2);
+		if(mtime !== 0) {
+			o.mtime = mtime; o.mt = read_date(blob, blob.l-8);
+		}
 		o.start = blob.read_shift(4, 'i');
 		o.size = blob.read_shift(4, 'i');
-		if(o.size < 0 && o.start < 0) { o.size = o.type = 0; o.start = ENDOFCHAIN; o.name = ""; }
 		if(o.type === 5) { /* root */
 			minifat_store = o.start;
 			if(nmfs > 0 && minifat_store !== ENDOFCHAIN) sector_list[minifat_store].name = "!StreamData";
@@ -1781,283 +1561,39 @@ function read_directory(dir_start/*:number*/, sector_list/*:SectorList*/, sector
 			o.storage = 'fat';
 			if(sector_list[o.start] === undefined) sector_list[o.start] = get_sector_list(sectors, o.start, sector_list.fat_addrs, sector_list.ssz);
 			sector_list[o.start].name = o.name;
-			o.content = (sector_list[o.start].data.slice(0,o.size)/*:any*/);
+			o.content = sector_list[o.start].data.slice(0,o.size);
+			prep_blob(o.content, 0);
 		} else {
 			o.storage = 'minifat';
-			if(o.size < 0) o.size = 0;
-			else if(minifat_store !== ENDOFCHAIN && o.start !== ENDOFCHAIN && sector_list[minifat_store]) {
-				o.content = get_mfat_entry(o, sector_list[minifat_store].data, (sector_list[mini]||{}).data);
+			if(minifat_store !== ENDOFCHAIN && o.start !== ENDOFCHAIN) {
+				o.content = sector_list[minifat_store].data.slice(o.start*MSSZ,o.start*MSSZ+o.size);
+				prep_blob(o.content, 0);
 			}
 		}
-		if(o.content) prep_blob(o.content, 0);
 		files[name] = o;
 		FileIndex.push(o);
 	}
 }
 
-function read_date(blob/*:RawBytes|CFBlob*/, offset/*:number*/)/*:Date*/ {
+function read_date(blob, offset) {
 	return new Date(( ( (__readUInt32LE(blob,offset+4)/1e7)*Math.pow(2,32)+__readUInt32LE(blob,offset)/1e7 ) - 11644473600)*1000);
 }
 
-function read_file(filename/*:string*/, options/*:CFBReadOpts*/) {
-	get_fs();
+var fs;
+function readFileSync(filename, options) {
+	if(fs === undefined) fs = require('fs');
 	return parse(fs.readFileSync(filename), options);
 }
 
-function read(blob/*:RawBytes|string*/, options/*:CFBReadOpts*/) {
-	switch(options && options.type || "base64") {
-		case "file": /*:: if(typeof blob !== 'string') throw "Must pass a filename when type='file'"; */return read_file(blob, options);
-		case "base64": /*:: if(typeof blob !== 'string') throw "Must pass a base64-encoded binary string when type='file'"; */return parse(s2a(Base64.decode(blob)), options);
-		case "binary": /*:: if(typeof blob !== 'string') throw "Must pass a binary string when type='file'"; */return parse(s2a(blob), options);
+function readSync(blob, options) {
+	switch(options !== undefined && options.type !== undefined ? options.type : "base64") {
+		case "file": return readFileSync(blob, options);
+		case "base64": return parse(s2a(Base64.decode(blob)), options);
+		case "binary": return parse(s2a(blob), options);
 	}
-	return parse(/*::typeof blob == 'string' ? new Buffer(blob, 'utf-8') : */blob, options);
+	return parse(blob);
 }
 
-function init_cfb(cfb/*:CFBContainer*/, opts/*:?any*/)/*:void*/ {
-	var o = opts || {}, root = o.root || "Root Entry";
-	if(!cfb.FullPaths) cfb.FullPaths = [];
-	if(!cfb.FileIndex) cfb.FileIndex = [];
-	if(cfb.FullPaths.length !== cfb.FileIndex.length) throw new Error("inconsistent CFB structure");
-	if(cfb.FullPaths.length === 0) {
-		cfb.FullPaths[0] = root + "/";
-		cfb.FileIndex[0] = ({ name: root, type: 5 }/*:any*/);
-	}
-	if(o.CLSID) cfb.FileIndex[0].clsid = o.CLSID;
-	seed_cfb(cfb);
-}
-function seed_cfb(cfb/*:CFBContainer*/)/*:void*/ {
-	var nm = "\u0001Sh33tJ5";
-	if(CFB.find(cfb, "/" + nm)) return;
-	var p = new_buf(4); p[0] = 55; p[1] = p[3] = 50; p[2] = 54;
-	cfb.FileIndex.push(({ name: nm, type: 2, content:p, size:4, L:69, R:69, C:69 }/*:any*/));
-	cfb.FullPaths.push(cfb.FullPaths[0] + nm);
-	rebuild_cfb(cfb);
-}
-function rebuild_cfb(cfb/*:CFBContainer*/, f/*:?boolean*/)/*:void*/ {
-	init_cfb(cfb);
-	var gc = false, s = false;
-	for(var i = cfb.FullPaths.length - 1; i >= 0; --i) {
-		var _file = cfb.FileIndex[i];
-		switch(_file.type) {
-			case 0:
-				if(s) gc = true;
-				else { cfb.FileIndex.pop(); cfb.FullPaths.pop(); }
-				break;
-			case 1: case 2: case 5:
-				s = true;
-				if(isNaN(_file.R * _file.L * _file.C)) gc = true;
-				if(_file.R > -1 && _file.L > -1 && _file.R == _file.L) gc = true;
-				break;
-			default: gc = true; break;
-		}
-	}
-	if(!gc && !f) return;
-
-	var now = new Date(1987, 1, 19), j = 0;
-	var data/*:Array<[string, CFBEntry]>*/ = [];
-	for(i = 0; i < cfb.FullPaths.length; ++i) {
-		if(cfb.FileIndex[i].type === 0) continue;
-		data.push([cfb.FullPaths[i], cfb.FileIndex[i]]);
-	}
-	for(i = 0; i < data.length; ++i) {
-		var dad = dirname(data[i][0]);
-		s = false;
-		for(j = 0; j < data.length; ++j) if(data[j][0] === dad) s = true;
-		if(!s) data.push([dad, ({
-			name: filename(dad).replace("/",""),
-			type: 1,
-			clsid: HEADER_CLSID,
-			ct: now, mt: now,
-			content: null
-		}/*:any*/)]);
-	}
-
-	data.sort(function(x,y) { return namecmp(x[0], y[0]); });
-	cfb.FullPaths = []; cfb.FileIndex = [];
-	for(i = 0; i < data.length; ++i) { cfb.FullPaths[i] = data[i][0]; cfb.FileIndex[i] = data[i][1]; }
-	for(i = 0; i < data.length; ++i) {
-		var elt = cfb.FileIndex[i];
-		var nm = cfb.FullPaths[i];
-
-		elt.name =  filename(nm).replace("/","");
-		elt.L = elt.R = elt.C = -(elt.color = 1);
-		elt.size = elt.content ? elt.content.length : 0;
-		elt.start = 0;
-		elt.clsid = (elt.clsid || HEADER_CLSID);
-		if(i === 0) {
-			elt.C = data.length > 1 ? 1 : -1;
-			elt.size = 0;
-			elt.type = 5;
-		} else if(nm.slice(-1) == "/") {
-			for(j=i+1;j < data.length; ++j) if(dirname(cfb.FullPaths[j])==nm) break;
-			elt.C = j >= data.length ? -1 : j;
-			for(j=i+1;j < data.length; ++j) if(dirname(cfb.FullPaths[j])==dirname(nm)) break;
-			elt.R = j >= data.length ? -1 : j;
-			elt.type = 1;
-		} else {
-			if(dirname(cfb.FullPaths[i+1]||"") == dirname(nm)) elt.R = i + 1;
-			elt.type = 2;
-		}
-	}
-
-}
-
-function _write(cfb/*:CFBContainer*/, options/*:CFBWriteOpts*/)/*:RawBytes*/ {
-	var _opts = options || {};
-	rebuild_cfb(cfb);
-	if(_opts.fileType == 'zip') return write_zip(cfb, _opts);
-	var L = (function(cfb/*:CFBContainer*/)/*:Array<number>*/{
-		var mini_size = 0, fat_size = 0;
-		for(var i = 0; i < cfb.FileIndex.length; ++i) {
-			var file = cfb.FileIndex[i];
-			if(!file.content) continue;
-			/*:: if(file.content == null) throw new Error("unreachable"); */
-			var flen = file.content.length;
-			if(flen > 0){
-				if(flen < 0x1000) mini_size += (flen + 0x3F) >> 6;
-				else fat_size += (flen + 0x01FF) >> 9;
-			}
-		}
-		var dir_cnt = (cfb.FullPaths.length +3) >> 2;
-		var mini_cnt = (mini_size + 7) >> 3;
-		var mfat_cnt = (mini_size + 0x7F) >> 7;
-		var fat_base = mini_cnt + fat_size + dir_cnt + mfat_cnt;
-		var fat_cnt = (fat_base + 0x7F) >> 7;
-		var difat_cnt = fat_cnt <= 109 ? 0 : Math.ceil((fat_cnt-109)/0x7F);
-		while(((fat_base + fat_cnt + difat_cnt + 0x7F) >> 7) > fat_cnt) difat_cnt = ++fat_cnt <= 109 ? 0 : Math.ceil((fat_cnt-109)/0x7F);
-		var L =  [1, difat_cnt, fat_cnt, mfat_cnt, dir_cnt, fat_size, mini_size, 0];
-		cfb.FileIndex[0].size = mini_size << 6;
-		L[7] = (cfb.FileIndex[0].start=L[0]+L[1]+L[2]+L[3]+L[4]+L[5])+((L[6]+7) >> 3);
-		return L;
-	})(cfb);
-	var o = new_buf(L[7] << 9);
-	var i = 0, T = 0;
-	{
-		for(i = 0; i < 8; ++i) o.write_shift(1, HEADER_SIG[i]);
-		for(i = 0; i < 8; ++i) o.write_shift(2, 0);
-		o.write_shift(2, 0x003E);
-		o.write_shift(2, 0x0003);
-		o.write_shift(2, 0xFFFE);
-		o.write_shift(2, 0x0009);
-		o.write_shift(2, 0x0006);
-		for(i = 0; i < 3; ++i) o.write_shift(2, 0);
-		o.write_shift(4, 0);
-		o.write_shift(4, L[2]);
-		o.write_shift(4, L[0] + L[1] + L[2] + L[3] - 1);
-		o.write_shift(4, 0);
-		o.write_shift(4, 1<<12);
-		o.write_shift(4, L[3] ? L[0] + L[1] + L[2] - 1: ENDOFCHAIN);
-		o.write_shift(4, L[3]);
-		o.write_shift(-4, L[1] ? L[0] - 1: ENDOFCHAIN);
-		o.write_shift(4, L[1]);
-		for(i = 0; i < 109; ++i) o.write_shift(-4, i < L[2] ? L[1] + i : -1);
-	}
-	if(L[1]) {
-		for(T = 0; T < L[1]; ++T) {
-			for(; i < 236 + T * 127; ++i) o.write_shift(-4, i < L[2] ? L[1] + i : -1);
-			o.write_shift(-4, T === L[1] - 1 ? ENDOFCHAIN : T + 1);
-		}
-	}
-	var chainit = function(w/*:number*/)/*:void*/ {
-		for(T += w; i<T-1; ++i) o.write_shift(-4, i+1);
-		if(w) { ++i; o.write_shift(-4, ENDOFCHAIN); }
-	};
-	T = i = 0;
-	for(T+=L[1]; i<T; ++i) o.write_shift(-4, consts.DIFSECT);
-	for(T+=L[2]; i<T; ++i) o.write_shift(-4, consts.FATSECT);
-	chainit(L[3]);
-	chainit(L[4]);
-	var j/*:number*/ = 0, flen/*:number*/ = 0;
-	var file/*:CFBEntry*/ = cfb.FileIndex[0];
-	for(; j < cfb.FileIndex.length; ++j) {
-		file = cfb.FileIndex[j];
-		if(!file.content) continue;
-		/*:: if(file.content == null) throw new Error("unreachable"); */
-		flen = file.content.length;
-		if(flen < 0x1000) continue;
-		file.start = T;
-		chainit((flen + 0x01FF) >> 9);
-	}
-	chainit((L[6] + 7) >> 3);
-	while(o.l & 0x1FF) o.write_shift(-4, consts.ENDOFCHAIN);
-	T = i = 0;
-	for(j = 0; j < cfb.FileIndex.length; ++j) {
-		file = cfb.FileIndex[j];
-		if(!file.content) continue;
-		/*:: if(file.content == null) throw new Error("unreachable"); */
-		flen = file.content.length;
-		if(!flen || flen >= 0x1000) continue;
-		file.start = T;
-		chainit((flen + 0x3F) >> 6);
-	}
-	while(o.l & 0x1FF) o.write_shift(-4, consts.ENDOFCHAIN);
-	for(i = 0; i < L[4]<<2; ++i) {
-		var nm = cfb.FullPaths[i];
-		if(!nm || nm.length === 0) {
-			for(j = 0; j < 17; ++j) o.write_shift(4, 0);
-			for(j = 0; j < 3; ++j) o.write_shift(4, -1);
-			for(j = 0; j < 12; ++j) o.write_shift(4, 0);
-			continue;
-		}
-		file = cfb.FileIndex[i];
-		if(i === 0) file.start = file.size ? file.start - 1 : ENDOFCHAIN;
-		var _nm/*:string*/ = (i === 0 && _opts.root) || file.name;
-		flen = 2*(_nm.length+1);
-		o.write_shift(64, _nm, "utf16le");
-		o.write_shift(2, flen);
-		o.write_shift(1, file.type);
-		o.write_shift(1, file.color);
-		o.write_shift(-4, file.L);
-		o.write_shift(-4, file.R);
-		o.write_shift(-4, file.C);
-		if(!file.clsid) for(j = 0; j < 4; ++j) o.write_shift(4, 0);
-		else o.write_shift(16, file.clsid, "hex");
-		o.write_shift(4, file.state || 0);
-		o.write_shift(4, 0); o.write_shift(4, 0);
-		o.write_shift(4, 0); o.write_shift(4, 0);
-		o.write_shift(4, file.start);
-		o.write_shift(4, file.size); o.write_shift(4, 0);
-	}
-	for(i = 1; i < cfb.FileIndex.length; ++i) {
-		file = cfb.FileIndex[i];
-		/*:: if(!file.content) throw new Error("unreachable"); */
-		if(file.size >= 0x1000) {
-			o.l = (file.start+1) << 9;
-			for(j = 0; j < file.size; ++j) o.write_shift(1, file.content[j]);
-			for(; j & 0x1FF; ++j) o.write_shift(1, 0);
-		}
-	}
-	for(i = 1; i < cfb.FileIndex.length; ++i) {
-		file = cfb.FileIndex[i];
-		/*:: if(!file.content) throw new Error("unreachable"); */
-		if(file.size > 0 && file.size < 0x1000) {
-			for(j = 0; j < file.size; ++j) o.write_shift(1, file.content[j]);
-			for(; j & 0x3F; ++j) o.write_shift(1, 0);
-		}
-	}
-	while(o.l < o.length) o.write_shift(1, 0);
-	return o;
-}
-/* [MS-CFB] 2.6.4 (Unicode 3.0.1 case conversion) */
-function find(cfb/*:CFBContainer*/, path/*:string*/)/*:?CFBEntry*/ {
-	var UCFullPaths/*:Array<string>*/ = cfb.FullPaths.map(function(x) { return x.toUpperCase(); });
-	var UCPaths/*:Array<string>*/ = UCFullPaths.map(function(x) { var y = x.split("/"); return y[y.length - (x.slice(-1) == "/" ? 2 : 1)]; });
-	var k/*:boolean*/ = false;
-	if(path.charCodeAt(0) === 47 /* "/" */) { k = true; path = UCFullPaths[0].slice(0, -1) + path; }
-	else k = path.indexOf("/") !== -1;
-	var UCPath/*:string*/ = path.toUpperCase();
-	var w/*:number*/ = k === true ? UCFullPaths.indexOf(UCPath) : UCPaths.indexOf(UCPath);
-	if(w !== -1) return cfb.FileIndex[w];
-
-	var m = !UCPath.match(chr1);
-	UCPath = UCPath.replace(chr0,'');
-	if(m) UCPath = UCPath.replace(chr1,'!');
-	for(w = 0; w < UCFullPaths.length; ++w) {
-		if((m ? UCFullPaths[w].replace(chr1,'!') : UCFullPaths[w]).replace(chr0,'') == UCPath) return cfb.FileIndex[w];
-		if((m ? UCPaths[w].replace(chr1,'!') : UCPaths[w]).replace(chr0,'') == UCPath) return cfb.FileIndex[w];
-	}
-	return null;
-}
 /** CFB Constants */
 var MSSZ = 64; /* Mini Sector Size = 1<<6 */
 //var MSCSZ = 4096; /* Mini Stream Cutoff Size */
@@ -2065,7 +1601,6 @@ var MSSZ = 64; /* Mini Sector Size = 1<<6 */
 var ENDOFCHAIN = -2;
 /* 2.2 Compound File Header */
 var HEADER_SIGNATURE = 'd0cf11e0a1b11ae1';
-var HEADER_SIG = [0xD0, 0xCF, 0x11, 0xE0, 0xA1, 0xB1, 0x1A, 0xE1];
 var HEADER_CLSID = '00000000000000000000000000000000';
 var consts = {
 	/* 2.1 Compund File Sector Numbers and Types */
@@ -2084,656 +1619,20 @@ var consts = {
 	EntryTypes: ['unknown','storage','stream','lockbytes','property','root']
 };
 
-function write_file(cfb/*:CFBContainer*/, filename/*:string*/, options/*:CFBWriteOpts*/)/*:void*/ {
-	get_fs();
-	var o = _write(cfb, options);
-	/*:: if(typeof Buffer == 'undefined' || !Buffer.isBuffer(o) || !(o instanceof Buffer)) throw new Error("unreachable"); */
-	fs.writeFileSync(filename, o);
-}
-
-function a2s(o/*:RawBytes*/)/*:string*/ {
-	var out = new Array(o.length);
-	for(var i = 0; i < o.length; ++i) out[i] = String.fromCharCode(o[i]);
-	return out.join("");
-}
-
-function write(cfb/*:CFBContainer*/, options/*:CFBWriteOpts*/)/*:RawBytes|string*/ {
-	var o = _write(cfb, options);
-	switch(options && options.type) {
-		case "file": get_fs(); fs.writeFileSync(options.filename, (o/*:any*/)); return o;
-		case "binary": return a2s(o);
-		case "base64": return Base64.encode(a2s(o));
-	}
-	return o;
-}
-/* node < 8.1 zlib does not expose bytesRead, so default to pure JS */
-var _zlib;
-function use_zlib(zlib) { try {
-	var InflateRaw = zlib.InflateRaw;
-	var InflRaw = new InflateRaw();
-	InflRaw._processChunk(new Uint8Array([3, 0]), InflRaw._finishFlushFlag);
-	if(InflRaw.bytesRead) _zlib = zlib;
-	else throw new Error("zlib does not expose bytesRead");
-} catch(e) {console.error("cannot use native zlib: " + (e.message || e)); } }
-
-function _inflateRawSync(payload, usz) {
-	if(!_zlib) return _inflate(payload, usz);
-	var InflateRaw = _zlib.InflateRaw;
-	var InflRaw = new InflateRaw();
-	var out = InflRaw._processChunk(payload.slice(payload.l), InflRaw._finishFlushFlag);
-	payload.l += InflRaw.bytesRead;
-	return out;
-}
-
-function _deflateRawSync(payload) {
-	return _zlib ? _zlib.deflateRawSync(payload) : _deflate(payload);
-}
-var CLEN_ORDER = [ 16, 17, 18, 0, 8, 7, 9, 6, 10, 5, 11, 4, 12, 3, 13, 2, 14, 1, 15 ];
-
-/*  LEN_ID = [ 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271, 272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285 ]; */
-var LEN_LN = [   3,   4,   5,   6,   7,   8,   9,  10,  11,  13 , 15,  17,  19,  23,  27,  31,  35,  43,  51,  59,  67,  83,  99, 115, 131, 163, 195, 227, 258 ];
-
-/*  DST_ID = [  0,  1,  2,  3,  4,  5,  6,  7,  8,  9, 10, 11, 12, 13,  14,  15,  16,  17,  18,  19,   20,   21,   22,   23,   24,   25,   26,    27,    28,    29 ]; */
-var DST_LN = [  1,  2,  3,  4,  5,  7,  9, 13, 17, 25, 33, 49, 65, 97, 129, 193, 257, 385, 513, 769, 1025, 1537, 2049, 3073, 4097, 6145, 8193, 12289, 16385, 24577 ];
-
-function bit_swap_8(n) { var t = (((((n<<1)|(n<<11)) & 0x22110) | (((n<<5)|(n<<15)) & 0x88440))); return ((t>>16) | (t>>8) |t)&0xFF; }
-
-var use_typed_arrays = typeof Uint8Array !== 'undefined';
-
-var bitswap8 = use_typed_arrays ? new Uint8Array(1<<8) : [];
-for(var q = 0; q < (1<<8); ++q) bitswap8[q] = bit_swap_8(q);
-
-function bit_swap_n(n, b) {
-	var rev = bitswap8[n & 0xFF];
-	if(b <= 8) return rev >>> (8-b);
-	rev = (rev << 8) | bitswap8[(n>>8)&0xFF];
-	if(b <= 16) return rev >>> (16-b);
-	rev = (rev << 8) | bitswap8[(n>>16)&0xFF];
-	return rev >>> (24-b);
-}
-
-/* helpers for unaligned bit reads */
-function read_bits_2(buf, bl) { var w = (bl&7), h = (bl>>>3); return ((buf[h]|(w <= 6 ? 0 : buf[h+1]<<8))>>>w)& 0x03; }
-function read_bits_3(buf, bl) { var w = (bl&7), h = (bl>>>3); return ((buf[h]|(w <= 5 ? 0 : buf[h+1]<<8))>>>w)& 0x07; }
-function read_bits_4(buf, bl) { var w = (bl&7), h = (bl>>>3); return ((buf[h]|(w <= 4 ? 0 : buf[h+1]<<8))>>>w)& 0x0F; }
-function read_bits_5(buf, bl) { var w = (bl&7), h = (bl>>>3); return ((buf[h]|(w <= 3 ? 0 : buf[h+1]<<8))>>>w)& 0x1F; }
-function read_bits_7(buf, bl) { var w = (bl&7), h = (bl>>>3); return ((buf[h]|(w <= 1 ? 0 : buf[h+1]<<8))>>>w)& 0x7F; }
-
-/* works up to n = 3 * 8 + 1 = 25 */
-function read_bits_n(buf, bl, n) {
-	var w = (bl&7), h = (bl>>>3), f = ((1<<n)-1);
-	var v = buf[h] >>> w;
-	if(n < 8 - w) return v & f;
-	v |= buf[h+1]<<(8-w);
-	if(n < 16 - w) return v & f;
-	v |= buf[h+2]<<(16-w);
-	if(n < 24 - w) return v & f;
-	v |= buf[h+3]<<(24-w);
-	return v & f;
-}
-
-/* until ArrayBuffer#realloc is a thing, fake a realloc */
-function realloc(b, sz/*:number*/) {
-	var L = b.length, M = 2*L > sz ? 2*L : sz + 5, i = 0;
-	if(L >= sz) return b;
-	if(has_buf) {
-		var o = new_unsafe_buf(M);
-		// $FlowIgnore
-		if(b.copy) b.copy(o);
-		else for(; i < b.length; ++i) o[i] = b[i];
-		return o;
-	} else if(use_typed_arrays) {
-		var a = new Uint8Array(M);
-		if(a.set) a.set(b);
-		else for(; i < b.length; ++i) a[i] = b[i];
-		return a;
-	}
-	b.length = M;
-	return b;
-}
-
-/* zero-filled arrays for older browsers */
-function zero_fill_array(n) {
-	var o = new Array(n);
-	for(var i = 0; i < n; ++i) o[i] = 0;
-	return o;
-}var _deflate = (function() {
-var _deflateRaw = (function() {
-	return function deflateRaw(data, out) {
-		var boff = 0;
-		while(boff < data.length) {
-			var L = Math.min(0xFFFF, data.length - boff);
-			var h = boff + L == data.length;
-			/* TODO: this is only type 0 stored */
-			out.write_shift(1, +h);
-			out.write_shift(2, L);
-			out.write_shift(2, (~L) & 0xFFFF);
-			while(L-- > 0) out[out.l++] = data[boff++];
-		}
-		return out.l;
-	};
-})();
-
-return function(data) {
-	var buf = new_buf(50+Math.floor(data.length*1.1));
-	var off = _deflateRaw(data, buf);
-	return buf.slice(0, off);
-};
-})();
-/* modified inflate function also moves original read head */
-
-/* build tree (used for literals and lengths) */
-function build_tree(clens, cmap, MAX/*:number*/)/*:number*/ {
-	var maxlen = 1, w = 0, i = 0, j = 0, ccode = 0, L = clens.length;
-
-	var bl_count  = use_typed_arrays ? new Uint16Array(32) : zero_fill_array(32);
-	for(i = 0; i < 32; ++i) bl_count[i] = 0;
-
-	for(i = L; i < MAX; ++i) clens[i] = 0;
-	L = clens.length;
-
-	var ctree = use_typed_arrays ? new Uint16Array(L) : zero_fill_array(L); // []
-
-	/* build code tree */
-	for(i = 0; i < L; ++i) {
-		bl_count[(w = clens[i])]++;
-		if(maxlen < w) maxlen = w;
-		ctree[i] = 0;
-	}
-	bl_count[0] = 0;
-	for(i = 1; i <= maxlen; ++i) bl_count[i+16] = (ccode = (ccode + bl_count[i-1])<<1);
-	for(i = 0; i < L; ++i) {
-		ccode = clens[i];
-		if(ccode != 0) ctree[i] = bl_count[ccode+16]++;
-	}
-
-	/* cmap[maxlen + 4 bits] = (off&15) + (lit<<4) reverse mapping */
-	var cleni = 0;
-	for(i = 0; i < L; ++i) {
-		cleni = clens[i];
-		if(cleni != 0) {
-			ccode = bit_swap_n(ctree[i], maxlen)>>(maxlen-cleni);
-			for(j = (1<<(maxlen + 4 - cleni)) - 1; j>=0; --j)
-				cmap[ccode|(j<<cleni)] = (cleni&15) | (i<<4);
-		}
-	}
-	return maxlen;
-}
-
-var fix_lmap = use_typed_arrays ? new Uint16Array(512) : zero_fill_array(512);
-var fix_dmap = use_typed_arrays ? new Uint16Array(32)  : zero_fill_array(32);
-if(!use_typed_arrays) {
-	for(var i = 0; i < 512; ++i) fix_lmap[i] = 0;
-	for(i = 0; i < 32; ++i) fix_dmap[i] = 0;
-}
-(function() {
-	var dlens/*:Array<number>*/ = [];
-	var i = 0;
-	for(;i<32; i++) dlens.push(5);
-	build_tree(dlens, fix_dmap, 32);
-
-	var clens/*:Array<number>*/ = [];
-	i = 0;
-	for(; i<=143; i++) clens.push(8);
-	for(; i<=255; i++) clens.push(9);
-	for(; i<=279; i++) clens.push(7);
-	for(; i<=287; i++) clens.push(8);
-	build_tree(clens, fix_lmap, 288);
-})();
-
-var dyn_lmap = use_typed_arrays ? new Uint16Array(32768) : zero_fill_array(32768);
-var dyn_dmap = use_typed_arrays ? new Uint16Array(32768) : zero_fill_array(32768);
-var dyn_cmap = use_typed_arrays ? new Uint16Array(128)   : zero_fill_array(128);
-var dyn_len_1 = 1, dyn_len_2 = 1;
-
-/* 5.5.3 Expanding Huffman Codes */
-function dyn(data, boff/*:number*/) {
-	/* nomenclature from RFC1951 refers to bit values; these are offset by the implicit constant */
-	var _HLIT = read_bits_5(data, boff) + 257; boff += 5;
-	var _HDIST = read_bits_5(data, boff) + 1; boff += 5;
-	var _HCLEN = read_bits_4(data, boff) + 4; boff += 4;
-	var w = 0;
-
-	/* grab and store code lengths */
-	var clens = use_typed_arrays ? new Uint8Array(19) : zero_fill_array(19);
-	var ctree = [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ];
-	var maxlen = 1;
-	var bl_count =  use_typed_arrays ? new Uint8Array(8) : zero_fill_array(8);
-	var next_code = use_typed_arrays ? new Uint8Array(8) : zero_fill_array(8);
-	var L = clens.length; /* 19 */
-	for(var i = 0; i < _HCLEN; ++i) {
-		clens[CLEN_ORDER[i]] = w = read_bits_3(data, boff);
-		if(maxlen < w) maxlen = w;
-		bl_count[w]++;
-		boff += 3;
-	}
-
-	/* build code tree */
-	var ccode = 0;
-	bl_count[0] = 0;
-	for(i = 1; i <= maxlen; ++i) next_code[i] = ccode = (ccode + bl_count[i-1])<<1;
-	for(i = 0; i < L; ++i) if((ccode = clens[i]) != 0) ctree[i] = next_code[ccode]++;
-	/* cmap[7 bits from stream] = (off&7) + (lit<<3) */
-	var cleni = 0;
-	for(i = 0; i < L; ++i) {
-		cleni = clens[i];
-		if(cleni != 0) {
-			ccode = bitswap8[ctree[i]]>>(8-cleni);
-			for(var j = (1<<(7-cleni))-1; j>=0; --j) dyn_cmap[ccode|(j<<cleni)] = (cleni&7) | (i<<3);
-		}
-	}
-
-	/* read literal and dist codes at once */
-	var hcodes/*:Array<number>*/ = [];
-	maxlen = 1;
-	for(; hcodes.length < _HLIT + _HDIST;) {
-		ccode = dyn_cmap[read_bits_7(data, boff)];
-		boff += ccode & 7;
-		switch((ccode >>>= 3)) {
-			case 16:
-				w = 3 + read_bits_2(data, boff); boff += 2;
-				ccode = hcodes[hcodes.length - 1];
-				while(w-- > 0) hcodes.push(ccode);
-				break;
-			case 17:
-				w = 3 + read_bits_3(data, boff); boff += 3;
-				while(w-- > 0) hcodes.push(0);
-				break;
-			case 18:
-				w = 11 + read_bits_7(data, boff); boff += 7;
-				while(w -- > 0) hcodes.push(0);
-				break;
-			default:
-				hcodes.push(ccode);
-				if(maxlen < ccode) maxlen = ccode;
-				break;
-		}
-	}
-
-	/* build literal / length trees */
-	var h1 = hcodes.slice(0, _HLIT), h2 = hcodes.slice(_HLIT);
-	for(i = _HLIT; i < 286; ++i) h1[i] = 0;
-	for(i = _HDIST; i < 30; ++i) h2[i] = 0;
-	dyn_len_1 = build_tree(h1, dyn_lmap, 286);
-	dyn_len_2 = build_tree(h2, dyn_dmap, 30);
-	return boff;
-}
-
-/* return [ data, bytesRead ] */
-function inflate(data, usz/*:number*/) {
-	/* shortcircuit for empty buffer [0x03, 0x00] */
-	if(data[0] == 3 && !(data[1] & 0x3)) { return [new_raw_buf(usz), 2]; }
-
-	/* bit offset */
-	var boff = 0;
-
-	/* header includes final bit and type bits */
-	var header = 0;
-
-	var outbuf = new_unsafe_buf(usz ? usz : (1<<18));
-	var woff = 0;
-	var OL = outbuf.length>>>0;
-	var max_len_1 = 0, max_len_2 = 0;
-
-	while((header&1) == 0) {
-		header = read_bits_3(data, boff); boff += 3;
-		if((header >>> 1) == 0) {
-			/* Stored block */
-			if(boff & 7) boff += 8 - (boff&7);
-			/* 2 bytes sz, 2 bytes bit inverse */
-			var sz = data[boff>>>3] | data[(boff>>>3)+1]<<8;
-			boff += 32;
-			/* push sz bytes */
-			if(!usz && OL < woff + sz) { outbuf = realloc(outbuf, woff + sz); OL = outbuf.length; }
-			if(typeof data.copy === 'function') {
-				// $FlowIgnore
-				data.copy(outbuf, woff, boff>>>3, (boff>>>3)+sz);
-				woff += sz; boff += 8*sz;
-			} else while(sz-- > 0) { outbuf[woff++] = data[boff>>>3]; boff += 8; }
-			continue;
-		} else if((header >>> 1) == 1) {
-			/* Fixed Huffman */
-			max_len_1 = 9; max_len_2 = 5;
-		} else {
-			/* Dynamic Huffman */
-			boff = dyn(data, boff);
-			max_len_1 = dyn_len_1; max_len_2 = dyn_len_2;
-		}
-		if(!usz && (OL < woff + 32767)) { outbuf = realloc(outbuf, woff + 32767); OL = outbuf.length; }
-		for(;;) { // while(true) is apparently out of vogue in modern JS circles
-			/* ingest code and move read head */
-			var bits = read_bits_n(data, boff, max_len_1);
-			var code = (header>>>1) == 1 ? fix_lmap[bits] : dyn_lmap[bits];
-			boff += code & 15; code >>>= 4;
-			/* 0-255 are literals, 256 is end of block token, 257+ are copy tokens */
-			if(((code>>>8)&0xFF) === 0) outbuf[woff++] = code;
-			else if(code == 256) break;
-			else {
-				code -= 257;
-				var len_eb = (code < 8) ? 0 : ((code-4)>>2); if(len_eb > 5) len_eb = 0;
-				var tgt = woff + LEN_LN[code];
-				/* length extra bits */
-				if(len_eb > 0) {
-					tgt += read_bits_n(data, boff, len_eb);
-					boff += len_eb;
-				}
-
-				/* dist code */
-				bits = read_bits_n(data, boff, max_len_2);
-				code = (header>>>1) == 1 ? fix_dmap[bits] : dyn_dmap[bits];
-				boff += code & 15; code >>>= 4;
-				var dst_eb = (code < 4 ? 0 : (code-2)>>1);
-				var dst = DST_LN[code];
-				/* dist extra bits */
-				if(dst_eb > 0) {
-					dst += read_bits_n(data, boff, dst_eb);
-					boff += dst_eb;
-				}
-
-				/* in the common case, manual byte copy is faster than TA set / Buffer copy */
-				if(!usz && OL < tgt) { outbuf = realloc(outbuf, tgt); OL = outbuf.length; }
-				while(woff < tgt) { outbuf[woff] = outbuf[woff - dst]; ++woff; }
-			}
-		}
-	}
-	return [usz ? outbuf : outbuf.slice(0, woff), (boff+7)>>>3];
-}
-
-function _inflate(payload, usz) {
-	var data = payload.slice(payload.l||0);
-	var out = inflate(data, usz);
-	payload.l += out[1];
-	return out[0];
-}
-
-function warn_or_throw(wrn, msg) {
-	if(wrn) { if(typeof console !== 'undefined') console.error(msg); }
-	else throw new Error(msg);
-}
-
-function parse_zip(file/*:RawBytes*/, options/*:CFBReadOpts*/)/*:CFBContainer*/ {
-	var blob/*:CFBlob*/ = /*::(*/file/*:: :any)*/;
-	prep_blob(blob, 0);
-
-	var FileIndex/*:CFBFileIndex*/ = [], FullPaths/*:Array<string>*/ = [];
-	var o = {
-		FileIndex: FileIndex,
-		FullPaths: FullPaths
-	};
-	init_cfb(o, { root: options.root });
-
-	/* find end of central directory, start just after signature */
-	var i = blob.length - 4;
-	while((blob[i] != 0x50 || blob[i+1] != 0x4b || blob[i+2] != 0x05 || blob[i+3] != 0x06) && i >= 0) --i;
-	blob.l = i + 4;
-
-	/* parse end of central directory */
-	blob.l += 4;
-	var fcnt = blob.read_shift(2);
-	blob.l += 6;
-	var start_cd = blob.read_shift(4);
-
-	/* parse central directory */
-	blob.l = start_cd;
-
-	for(i = 0; i < fcnt; ++i) {
-		/* trust local file header instead of CD entry */
-		blob.l += 20;
-		var csz = blob.read_shift(4);
-		var usz = blob.read_shift(4);
-		var namelen = blob.read_shift(2);
-		var efsz = blob.read_shift(2);
-		var fcsz = blob.read_shift(2);
-		blob.l += 8;
-		var offset = blob.read_shift(4);
-		var EF = parse_extra_field(/*::(*/blob.slice(blob.l+namelen, blob.l+namelen+efsz)/*:: :any)*/);
-		blob.l += namelen + efsz + fcsz;
-
-		var L = blob.l;
-		blob.l = offset + 4;
-		parse_local_file(blob, csz, usz, o, EF);
-		blob.l = L;
-	}
-
-	return o;
-}
-
-
-/* head starts just after local file header signature */
-function parse_local_file(blob/*:CFBlob*/, csz/*:number*/, usz/*:number*/, o/*:CFBContainer*/, EF) {
-	/* [local file header] */
-	blob.l += 2;
-	var flags = blob.read_shift(2);
-	var meth = blob.read_shift(2);
-	var date = parse_dos_date(blob);
-
-	if(flags & 0x2041) throw new Error("Unsupported ZIP encryption");
-	var crc32 = blob.read_shift(4);
-	var _csz = blob.read_shift(4);
-	var _usz = blob.read_shift(4);
-
-	var namelen = blob.read_shift(2);
-	var efsz = blob.read_shift(2);
-
-	// TODO: flags & (1<<11) // UTF8
-	var name = ""; for(var i = 0; i < namelen; ++i) name += String.fromCharCode(blob[blob.l++]);
-	if(efsz) {
-		var ef = parse_extra_field(/*::(*/blob.slice(blob.l, blob.l + efsz)/*:: :any)*/);
-		if((ef[0x5455]||{}).mt) date = ef[0x5455].mt;
-		if(((EF||{})[0x5455]||{}).mt) date = EF[0x5455].mt;
-	}
-	blob.l += efsz;
-
-	/* [encryption header] */
-
-	/* [file data] */
-	var data = blob.slice(blob.l, blob.l + _csz);
-	switch(meth) {
-		case 8: data = _inflateRawSync(blob, _usz); break;
-		case 0: break;
-		default: throw new Error("Unsupported ZIP Compression method " + meth);
-	}
-
-	/* [data descriptor] */
-	var wrn = false;
-	if(flags & 8) {
-		crc32 = blob.read_shift(4);
-		if(crc32 == 0x08074b50) { crc32 = blob.read_shift(4); wrn = true; }
-		_csz = blob.read_shift(4);
-		_usz = blob.read_shift(4);
-	}
-
-	if(_csz != csz) warn_or_throw(wrn, "Bad compressed size: " + csz + " != " + _csz);
-	if(_usz != usz) warn_or_throw(wrn, "Bad uncompressed size: " + usz + " != " + _usz);
-	var _crc32 = CRC32.buf(data, 0);
-	if((crc32>>0) != (_crc32>>0)) warn_or_throw(wrn, "Bad CRC32 checksum: " + crc32 + " != " + _crc32);
-	cfb_add(o, name, data, {unsafe: true, mt: date});
-}
-function write_zip(cfb/*:CFBContainer*/, options/*:CFBWriteOpts*/)/*:RawBytes*/ {
-	var _opts = options || {};
-	var out = [], cdirs = [];
-	var o/*:CFBlob*/ = new_buf(1);
-	var method = (_opts.compression ? 8 : 0), flags = 0;
-	var desc = false;
-	if(desc) flags |= 8;
-	var i = 0, j = 0;
-
-	var start_cd = 0, fcnt = 0;
-	var root = cfb.FullPaths[0], fp = root, fi = cfb.FileIndex[0];
-	var crcs = [];
-	var sz_cd = 0;
-
-	for(i = 1; i < cfb.FullPaths.length; ++i) {
-		fp = cfb.FullPaths[i].slice(root.length); fi = cfb.FileIndex[i];
-		if(!fi.size || !fi.content || fp == "\u0001Sh33tJ5") continue;
-		var start = start_cd;
-
-		/* TODO: CP437 filename */
-		var namebuf = new_buf(fp.length);
-		for(j = 0; j < fp.length; ++j) namebuf.write_shift(1, fp.charCodeAt(j) & 0x7F);
-		namebuf = namebuf.slice(0, namebuf.l);
-		crcs[fcnt] = CRC32.buf(/*::((*/fi.content/*::||[]):any)*/, 0);
-
-		var outbuf = fi.content/*::||[]*/;
-		if(method == 8) outbuf = _deflateRawSync(outbuf);
-
-		/* local file header */
-		o = new_buf(30);
-		o.write_shift(4, 0x04034b50);
-		o.write_shift(2, 20);
-		o.write_shift(2, flags);
-		o.write_shift(2, method);
-		/* TODO: last mod file time/date */
-		if(fi.mt) write_dos_date(o, fi.mt);
-		else o.write_shift(4, 0);
-		o.write_shift(-4, (flags & 8) ? 0 : crcs[fcnt]);
-		o.write_shift(4,  (flags & 8) ? 0 : outbuf.length);
-		o.write_shift(4,  (flags & 8) ? 0 : /*::(*/fi.content/*::||[])*/.length);
-		o.write_shift(2, namebuf.length);
-		o.write_shift(2, 0);
-
-		start_cd += o.length;
-		out.push(o);
-		start_cd += namebuf.length;
-		out.push(namebuf);
-
-		/* TODO: encryption header ? */
-		start_cd += outbuf.length;
-		out.push(outbuf);
-
-		/* data descriptor */
-		if(flags & 8) {
-			o = new_buf(12);
-			o.write_shift(-4, crcs[fcnt]);
-			o.write_shift(4, outbuf.length);
-			o.write_shift(4, /*::(*/fi.content/*::||[])*/.length);
-			start_cd += o.l;
-			out.push(o);
-		}
-
-		/* central directory */
-		o = new_buf(46);
-		o.write_shift(4, 0x02014b50);
-		o.write_shift(2, 0);
-		o.write_shift(2, 20);
-		o.write_shift(2, flags);
-		o.write_shift(2, method);
-		o.write_shift(4, 0); /* TODO: last mod file time/date */
-		o.write_shift(-4, crcs[fcnt]);
-
-		o.write_shift(4, outbuf.length);
-		o.write_shift(4, /*::(*/fi.content/*::||[])*/.length);
-		o.write_shift(2, namebuf.length);
-		o.write_shift(2, 0);
-		o.write_shift(2, 0);
-		o.write_shift(2, 0);
-		o.write_shift(2, 0);
-		o.write_shift(4, 0);
-		o.write_shift(4, start);
-
-		sz_cd += o.l;
-		cdirs.push(o);
-		sz_cd += namebuf.length;
-		cdirs.push(namebuf);
-		++fcnt;
-	}
-
-	/* end of central directory */
-	o = new_buf(22);
-	o.write_shift(4, 0x06054b50);
-	o.write_shift(2, 0);
-	o.write_shift(2, 0);
-	o.write_shift(2, fcnt);
-	o.write_shift(2, fcnt);
-	o.write_shift(4, sz_cd);
-	o.write_shift(4, start_cd);
-	o.write_shift(2, 0);
-
-	return bconcat(([bconcat((out/*:any*/)), bconcat(cdirs), o]/*:any*/));
-}
-function cfb_new(opts/*:?any*/)/*:CFBContainer*/ {
-	var o/*:CFBContainer*/ = ({}/*:any*/);
-	init_cfb(o, opts);
-	return o;
-}
-
-function cfb_add(cfb/*:CFBContainer*/, name/*:string*/, content/*:?RawBytes*/, opts/*:?any*/)/*:CFBEntry*/ {
-	var unsafe = opts && opts.unsafe;
-	if(!unsafe) init_cfb(cfb);
-	var file = !unsafe && CFB.find(cfb, name);
-	if(!file) {
-		var fpath/*:string*/ = cfb.FullPaths[0];
-		if(name.slice(0, fpath.length) == fpath) fpath = name;
-		else {
-			if(fpath.slice(-1) != "/") fpath += "/";
-			fpath = (fpath + name).replace("//","/");
-		}
-		file = ({name: filename(name), type: 2}/*:any*/);
-		cfb.FileIndex.push(file);
-		cfb.FullPaths.push(fpath);
-		if(!unsafe) CFB.utils.cfb_gc(cfb);
-	}
-	/*:: if(!file) throw new Error("unreachable"); */
-	file.content = (content/*:any*/);
-	file.size = content ? content.length : 0;
-	if(opts) {
-		if(opts.CLSID) file.clsid = opts.CLSID;
-		if(opts.mt) file.mt = opts.mt;
-		if(opts.ct) file.ct = opts.ct;
-	}
-	return file;
-}
-
-function cfb_del(cfb/*:CFBContainer*/, name/*:string*/)/*:boolean*/ {
-	init_cfb(cfb);
-	var file = CFB.find(cfb, name);
-	if(file) for(var j = 0; j < cfb.FileIndex.length; ++j) if(cfb.FileIndex[j] == file) {
-		cfb.FileIndex.splice(j, 1);
-		cfb.FullPaths.splice(j, 1);
-		return true;
-	}
-	return false;
-}
-
-function cfb_mov(cfb/*:CFBContainer*/, old_name/*:string*/, new_name/*:string*/)/*:boolean*/ {
-	init_cfb(cfb);
-	var file = CFB.find(cfb, old_name);
-	if(file) for(var j = 0; j < cfb.FileIndex.length; ++j) if(cfb.FileIndex[j] == file) {
-		cfb.FileIndex[j].name = filename(new_name);
-		cfb.FullPaths[j] = new_name;
-		return true;
-	}
-	return false;
-}
-
-function cfb_gc(cfb/*:CFBContainer*/)/*:void*/ { rebuild_cfb(cfb, true); }
-
-exports.find = find;
-exports.read = read;
+exports.read = readSync;
 exports.parse = parse;
-exports.write = write;
-exports.writeFile = write_file;
 exports.utils = {
-	cfb_new: cfb_new,
-	cfb_add: cfb_add,
-	cfb_del: cfb_del,
-	cfb_mov: cfb_mov,
-	cfb_gc: cfb_gc,
 	ReadShift: ReadShift,
 	CheckField: CheckField,
 	prep_blob: prep_blob,
 	bconcat: bconcat,
-	use_zlib: use_zlib,
-	_deflateRaw: _deflate,
-	_inflateRaw: _inflate,
 	consts: consts
 };
 
 return exports;
 })();
 
-if(typeof require !== 'undefined' && typeof module !== 'undefined' && typeof DO_NOT_EXPORT_CFB === 'undefined') { module.exports = CFB; }
-var _fs;
+if(typeof require !== 'undefined' && typeof module !== 'undefined' && typeof DO_NOT_EXPORT_CFB === 'undefined') { module.exports = CFB; }var _fs;
 if(typeof require !== 'undefined') try { _fs = require('fs'); } catch(e) {}
 
 /* normalize data for blob ctor */
@@ -4562,7 +3461,13 @@ function cp_doit(f, g, h, o, p) {
 function write_core_props(cp, _opts) {
 	var opts = _opts || {};
 	var o = [XML_HEADER, CORE_PROPS_XML_ROOT], p = {};
-	if(!cp && !opts.Props) return o.join("");
+	if (opts && opts.Props) {
+    if (opts.Props.title) o[o.length]       = '<dc:title>'       + opts.Props.title        + '</dc:title>';
+    if (opts.Props.subject) o[o.length]     = '<dc:subject>'     + opts.Props.subject      + '</dc:subject>';
+    if (opts.Props.creator) o[o.length]     = '<dc:creator>'     + opts.Props.creator      + '</dc:creator>';
+    if (opts.Props.keywords) o[o.length]    = '<cp:keywords>'    + opts.Props.keywords      + '</cp:keywords>';
+    if (opts.Props.description) o[o.length] = '<dc:description>' + opts.Props.description  + '</dc:description>';
+  }
 
 	if(cp) {
 		if(cp.CreatedDate != null) cp_doit("dcterms:created", typeof cp.CreatedDate === "string" ? cp.CreatedDate : write_w3cdtf(cp.CreatedDate, opts.WTF), {"xsi:type":"dcterms:W3CDTF"}, o, p);
@@ -5953,8 +4858,8 @@ function write_sst_xml(sst/*:SST*/, opts)/*:string*/ {
 	return o.join("");
 }
 function hex2RGB(h) {
-	var o = h.slice(h[0]==="#"?1:0).slice(0,6);
-	return [parseInt(o.slice(0,2),16),parseInt(o.slice(2,4),16),parseInt(o.slice(4,6),16)];
+	var o = h.substr(h[0]==="#"?1:0,6);
+	return [parseInt(o.substr(0,2),16),parseInt(o.substr(2,2),16),parseInt(o.substr(4,2),16)];
 }
 function rgb2Hex(rgb) {
 	for(var i=0,o=1; i!=3; ++i) o = o*256 + (rgb[i]>255?255:rgb[i]<0?0:rgb[i]);
@@ -5996,11 +4901,12 @@ function hsl2RGB(hsl){
 
 /* 18.8.3 bgColor tint algorithm */
 function rgb_tint(hex, tint) {
-	if(tint === 0) return hex;
+	if(tint == 0) return hex;
 	var hsl = rgb2HSL(hex2RGB(hex));
 	if (tint < 0) hsl[2] = hsl[2] * (1 + tint);
 	else hsl[2] = 1 - (1 - hsl[2]) * (1 - tint);
-	return rgb2Hex(hsl2RGB(hsl));
+  var rev =rgb2Hex(hsl2RGB(hsl))
+	return rev;
 }
 
 /* 18.3.1.13 width calculations */
@@ -6145,40 +5051,64 @@ function parse_borders(t, styles, themes, opts) {
 	});
 }
 
-/* 18.8.21 fills CT_Fills */
-function parse_fills(t, styles, themes, opts) {
-	styles.Fills = [];
-	var fill = {};
-	var pass = false;
-	(t[0].match(tagregex)||[]).forEach(function(x) {
-		var y = parsexmltag(x);
-		switch(strip_ns(y[0])) {
-			case '<fills': case '<fills>': case '</fills>': break;
+function parse_fills(t, opts) {
+  styles.Fills = [];
+  var fill = {};
+  t[0].match(tagregex).forEach(function (x) {
+    var y = parsexmltag(x);
+    switch (y[0]) {
+      case '<fills':
+      case '<fills>':
+      case '</fills>':
+        break;
 
-			/* 18.8.20 fill CT_Fill */
-			case '<fill>': case '<fill': case '<fill/>':
-				fill = {}; styles.Fills.push(fill); break;
-			case '</fill>': break;
+      /* 18.8.20 fill CT_Fill */
+      case '<fill>':
+        break;
+      case '</fill>':
+        styles.Fills.push(fill);
+        fill = {};
+        break;
 
-			/* 18.8.24 gradientFill CT_GradientFill */
-			case '<gradientFill>': break;
-			case '<gradientFill':
-			case '</gradientFill>': styles.Fills.push(fill); fill = {}; break;
+      /* 18.8.32 patternFill CT_PatternFill */
+      case '<patternFill':
+        if (y.patternType) fill.patternType = y.patternType;
+        break;
+      case '<patternFill/>':
+      case '</patternFill>':
+        break;
 
-			/* 18.8.32 patternFill CT_PatternFill */
-			case '<patternFill': case '<patternFill>':
-				if(y.patternType) fill.patternType = y.patternType;
-				break;
-			case '<patternFill/>': case '</patternFill>': break;
+      /* 18.8.3 bgColor CT_Color */
+      case '<bgColor':
+        if (!fill.bgColor) fill.bgColor = {};
+        if (y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
+        if (y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
+        if (y.tint) fill.bgColor.tint = parseFloat(y.tint);
 
-			/* 18.8.3 bgColor CT_Color */
-			case '<bgColor':
-				if(!fill.bgColor) fill.bgColor = {};
-				if(y.indexed) fill.bgColor.indexed = parseInt(y.indexed, 10);
-				if(y.theme) fill.bgColor.theme = parseInt(y.theme, 10);
-				if(y.tint) fill.bgColor.tint = parseFloat(y.tint);
-				/* Excel uses ARGB strings */
-				if(y.rgb) fill.bgColor.rgb = y.rgb.slice(-6);
+
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          fill.bgColor.rgb = rgb_tint(themes.themeElements.clrScheme[fill.bgColor.theme].rgb, fill.bgColor.tint || 0);
+          if (opts.WTF) fill.bgColor.raw_rgb = rgb_tint(themes.themeElements.clrScheme[fill.bgColor.theme].rgb,0);
+        }
+        /* Excel uses ARGB strings */
+        if (y.rgb) fill.bgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
+        break;
+      case '<bgColor/>':
+      case '</bgColor>':
+        break;
+
+      /* 18.8.19 fgColor CT_Color */
+      case '<fgColor':
+        if (!fill.fgColor) fill.fgColor = {};
+        if (y.theme) fill.fgColor.theme = parseInt(y.theme, 10);
+        if (y.tint) fill.fgColor.tint = parseFloat(y.tint);
+
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          fill.fgColor.rgb = rgb_tint(themes.themeElements.clrScheme[fill.fgColor.theme].rgb, fill.fgColor.tint || 0);
+          if (opts.WTF) fill.fgColor.raw_rgb = rgb_tint(themes.themeElements.clrScheme[fill.fgColor.theme].rgb,0);
+        }
+        /* Excel uses ARGB strings */
+        if(y.rgb) fill.bgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
 				break;
 			case '<bgColor/>': case '</bgColor>': break;
 
@@ -6188,7 +5118,7 @@ function parse_fills(t, styles, themes, opts) {
 				if(y.theme) fill.fgColor.theme = parseInt(y.theme, 10);
 				if(y.tint) fill.fgColor.tint = parseFloat(y.tint);
 				/* Excel uses ARGB strings */
-				if(y.rgb != null) fill.fgColor.rgb = y.rgb.slice(-6);
+				if(y.rgb) fill.fgColor.rgb = y.rgb;//.substring(y.rgb.length - 6);
 				break;
 			case '<fgColor/>': case '</fgColor>': break;
 
@@ -6331,178 +5261,332 @@ function parse_fonts(t, styles, themes, opts) {
 	});
 }
 
-/* 18.8.31 numFmts CT_NumFmts */
-function parse_numFmts(t, styles, opts) {
-	styles.NumberFmt = [];
-	var k/*Array<number>*/ = (keys(SSF._table)/*:any*/);
-	for(var i=0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
-	var m = t[0].match(tagregex);
-	if(!m) return;
-	for(i=0; i < m.length; ++i) {
-		var y = parsexmltag(m[i]);
-		switch(strip_ns(y[0])) {
-			case '<numFmts': case '</numFmts>': case '<numFmts/>': case '<numFmts>': break;
-			case '<numFmt': {
-				var f=unescapexml(utf8read(y.formatCode)), j=parseInt(y.numFmtId,10);
-				styles.NumberFmt[j] = f;
-				if(j>0) {
-					if(j > 0x188) {
-						for(j = 0x188; j > 0x3c; --j) if(styles.NumberFmt[j] == null) break;
-						styles.NumberFmt[j] = f;
-					}
-					SSF.load(f,j);
-				}
-			} break;
-			case '</numFmt>': break;
-			default: if(opts.WTF) throw new Error('unrecognized ' + y[0] + ' in numFmts');
-		}
-	}
+function parse_fonts(t, opts) {
+  styles.Fonts = [];
+  var font = {};
+  t[0].match(tagregex).forEach(function (x) {
+    var y = parsexmltag(x);
+    switch (y[0]) {
+
+      case '<fonts':
+      case  '<fonts>':
+      case '</fonts>':
+        break;
+      case '<font':
+        break;
+      case '</font>':
+        styles.Fonts.push(font);
+        ;
+        font = {};
+        break;
+
+      case '<name':
+        if (y.val) font.name = y.val;
+        break;
+      case '<name/>':
+      case '</name>':
+        break;
+
+
+      case '<b/>':
+        font.bold = true;
+        break;
+      case '<u/>':
+        font.underline = true;
+        break;
+      case '<i/>':
+        font.italic = true;
+        break;
+      case '<strike/>':
+        font.strike = true;
+        break;
+      case '<outline/>':
+        font.outline = true;
+        break;
+      case '<shadow/>':
+        font.shadow = true;
+        break;
+
+
+      case '<sz':
+        if (y.val) font.sz = y.val;
+        break;
+      case '<sz/>':
+      case '</sz>':
+        break;
+
+      case '<vertAlign':
+        if (y.val) font.vertAlign = y.val;
+        break;
+      case '<vertAlign/>':
+      case '</vertAlign>':
+        break;
+
+
+      case '<color':
+        if (!font.color) font.color = {};
+        if (y.theme) font.color.theme = y.theme;
+        if (y.tint) font.color.tint = y.tint;
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          font.color.rgb = rgb_tint(themes.themeElements.clrScheme[font.color.theme].rgb, font.color.tint || 0);
+        }
+        if (y.rgb) font.color.rgb = y.rgb;
+        break;
+      case '<color/>':
+      case '</color>':
+        break;
+    }
+  });
 }
 
-function write_numFmts(NF/*:{[n:number|string]:string}*//*::, opts*/) {
-	var o = ["<numFmts>"];
-	[[5,8],[23,26],[41,44],[/*63*/50,/*66],[164,*/392]].forEach(function(r) {
-		for(var i = r[0]; i <= r[1]; ++i) if(NF[i] != null) o[o.length] = (writextag('numFmt',null,{numFmtId:i,formatCode:escapexml(NF[i])}));
-	});
-	if(o.length === 1) return "";
-	o[o.length] = ("</numFmts>");
-	o[0] = writextag('numFmts', null, { count:o.length-2 }).replace("/>", ">");
-	return o.join("");
+function parse_borders(t, opts) {
+  styles.Borders = [];
+  var border = {}, sub_border = {};
+  t[0].match(tagregex).forEach(function (x) {
+    var y = parsexmltag(x);
+    switch (y[0]) {
+      case '<borders':
+      case  '<borders>':
+      case '</borders>':
+        break;
+      case '<border':
+      case '<border>':
+        border = {};
+        if (y.diagonalUp) { border.diagonalUp = y.diagonalUp; }
+        if (y.diagonalDown) { border.diagonalDown = y.diagonalDown; }
+        styles.Borders.push(border);
+
+        break;
+        break;
+      case '</border>':
+        break;
+
+      case '<left':
+        sub_border = border.left = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<right':
+        sub_border = border.right = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<top':
+        sub_border = border.top = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<bottom':
+        sub_border = border.bottom = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+      case '<diagonal':
+        sub_border = border.diagonal = {};
+        if (y.style) {
+          sub_border.style = y.style;
+        }
+        break;
+
+      case '<color':
+        sub_border.color = {};
+        if (y.theme) sub_border.color.theme = y.theme;
+        if (y.theme && themes.themeElements && themes.themeElements.clrScheme) {
+          sub_border.color.rgb = rgb_tint(themes.themeElements.clrScheme[sub_border.color.theme].rgb, sub_border.color.tint || 0);
+        }
+
+        if (y.tint) sub_border.color.tint = y.tint;
+        if (y.rgb) sub_border.color.rgb = y.rgb;
+        break;
+      case '<name/>':
+      case '</name>':
+        break;
+      default:
+        break;
+    }
+  });
+
+}
+
+/* 18.8.31 numFmts CT_NumFmts */
+function parse_numFmts(t, opts) {
+  styles.NumberFmt = [];
+  var k = keys(SSF._table);
+  for (var i = 0; i < k.length; ++i) styles.NumberFmt[k[i]] = SSF._table[k[i]];
+  var m = t[0].match(tagregex);
+  for (i = 0; i < m.length; ++i) {
+    var y = parsexmltag(m[i]);
+    switch (y[0]) {
+      case '<numFmts':
+      case '</numFmts>':
+      case '<numFmts/>':
+      case '<numFmts>':
+        break;
+      case '<numFmt':
+      {
+        var f = unescapexml(utf8read(y.formatCode)), j = parseInt(y.numFmtId, 10);
+        styles.NumberFmt[j] = f;
+        if (j > 0) SSF.load(f, j);
+      }
+        break;
+      default:
+        if (opts.WTF) throw 'unrecognized ' + y[0] + ' in numFmts';
+    }
+  }
+}
+
+function write_numFmts(NF, opts) {
+  var o = ["<numFmts>"];
+  [
+    [5, 8],
+    [23, 26],
+    [41, 44],
+    [63, 66],
+    [164, 392]
+  ].forEach(function (r) {
+    for (var i = r[0]; i <= r[1]; ++i) if (NF[i] !== undefined) o[o.length] = (writextag('numFmt', null, {numFmtId: i, formatCode: escapexml(NF[i])}));
+  });
+  if (o.length === 1) return "";
+  o[o.length] = ("</numFmts>");
+  o[0] = writextag('numFmts', null, { count: o.length - 2 }).replace("/>", ">");
+  return o.join("");
 }
 
 /* 18.8.10 cellXfs CT_CellXfs */
-var cellXF_uint = [ "numFmtId", "fillId", "fontId", "borderId", "xfId" ];
-var cellXF_bool = [ "applyAlignment", "applyBorder", "applyFill", "applyFont", "applyNumberFormat", "applyProtection", "pivotButton", "quotePrefix" ];
-function parse_cellXfs(t, styles, opts) {
-	styles.CellXf = [];
-	var xf;
-	var pass = false;
-	(t[0].match(tagregex)||[]).forEach(function(x) {
-		var y = parsexmltag(x), i = 0;
-		switch(strip_ns(y[0])) {
-			case '<cellXfs': case '<cellXfs>': case '<cellXfs/>': case '</cellXfs>': break;
+function parse_cellXfs(t, opts) {
+  styles.CellXf = [];
+  var xf;
+  t[0].match(tagregex).forEach(function (x) {
+    var y = parsexmltag(x);
+    switch (y[0]) {
+      case '<cellXfs':
+      case '<cellXfs>':
+      case '<cellXfs/>':
+      case '</cellXfs>':
+        break;
 
-			/* 18.8.45 xf CT_Xf */
-			case '<xf': case '<xf/>':
-				xf = y;
-				delete xf[0];
-				for(i = 0; i < cellXF_uint.length; ++i) if(xf[cellXF_uint[i]])
-					xf[cellXF_uint[i]] = parseInt(xf[cellXF_uint[i]], 10);
-				for(i = 0; i < cellXF_bool.length; ++i) if(xf[cellXF_bool[i]])
-					xf[cellXF_bool[i]] = parsexmlbool(xf[cellXF_bool[i]]);
-				if(xf.numFmtId > 0x188) {
-					for(i = 0x188; i > 0x3c; --i) if(styles.NumberFmt[xf.numFmtId] == styles.NumberFmt[i]) { xf.numFmtId = i; break; }
-				}
-				styles.CellXf.push(xf); break;
-			case '</xf>': break;
+      /* 18.8.45 xf CT_Xf */
+      case '<xf':
+          xf = y;
+          delete xf[0];
+        delete y[0];
+        if (xf.numFmtId) xf.numFmtId = parseInt(xf.numFmtId, 10);
+        if (xf.fillId) xf.fillId = parseInt(xf.fillId, 10);
+        styles.CellXf.push(xf);
+        break;
+      case '</xf>':
+        break;
 
-			/* 18.8.1 alignment CT_CellAlignment */
-			case '<alignment': case '<alignment/>':
-				var alignment = {};
-				if(y.vertical) alignment.vertical = y.vertical;
-				if(y.horizontal) alignment.horizontal = y.horizontal;
-				if(y.textRotation != null) alignment.textRotation = y.textRotation;
-				if(y.indent) alignment.indent = y.indent;
-				if(y.wrapText) alignment.wrapText = parsexmlbool(y.wrapText);
-				xf.alignment = alignment;
-				break;
-			case '</alignment>': break;
+      /* 18.8.1 alignment CT_CellAlignment */
+      case '<alignment':
+      case '<alignment/>':
+        var alignment = {}
+          if (y.vertical) { alignment.vertical = y.vertical;}
+        if (y.horizontal) { alignment.horizontal = y.horizontal;}
+          if (y.indent) { alignment.indent = y.indent; }
+          if (y.wrapText) { alignment.wrapText = y.wrapText; }
+          xf.alignment = alignment;
 
-			/* 18.8.33 protection CT_CellProtection */
-			case '<protection':
-				break;
-			case '</protection>': case '<protection/>': break;
+        break;
 
-			/* note: sometimes mc:AlternateContent appears bare */
-			case '<AlternateContent': pass = true; break;
-			case '</AlternateContent>': pass = false; break;
+      /* 18.8.33 protection CT_CellProtection */
+      case '<protection':
+      case '</protection>':
+      case '<protection/>':
+        break;
 
-			/* 18.2.10 extLst CT_ExtensionList ? */
-			case '<extLst': case '<extLst>': case '</extLst>': break;
-			case '<ext': pass = true; break;
-			case '</ext>': pass = false; break;
-			default: if(opts && opts.WTF) {
-				if(!pass) throw new Error('unrecognized ' + y[0] + ' in cellXfs');
-			}
-		}
-	});
+      case '<extLst':
+      case '</extLst>':
+        break;
+      case '<ext':
+        break;
+      default:
+        if (opts.WTF) throw 'unrecognized ' + y[0] + ' in cellXfs';
+    }
+  });
 }
 
-function write_cellXfs(cellXfs)/*:string*/ {
-	var o/*:Array<string>*/ = [];
-	o[o.length] = (writextag('cellXfs',null));
-	cellXfs.forEach(function(c) {
-		o[o.length] = (writextag('xf', null, c));
-	});
-	o[o.length] = ("</cellXfs>");
-	if(o.length === 2) return "";
-	o[0] = writextag('cellXfs',null, {count:o.length-2}).replace("/>",">");
-	return o.join("");
+function write_cellXfs(cellXfs) {
+  var o = [];
+  o[o.length] = (writextag('cellXfs', null));
+  cellXfs.forEach(function (c) {
+    o[o.length] = (writextag('xf', null, c));
+  });
+  o[o.length] = ("</cellXfs>");
+  if (o.length === 2) return "";
+  o[0] = writextag('cellXfs', null, {count: o.length - 2}).replace("/>", ">");
+  return o.join("");
 }
 
 /* 18.8 Styles CT_Stylesheet*/
-var parse_sty_xml= (function make_pstyx() {
-var numFmtRegex = /<(?:\w+:)?numFmts([^>]*)>[\S\s]*?<\/(?:\w+:)?numFmts>/;
-var cellXfRegex = /<(?:\w+:)?cellXfs([^>]*)>[\S\s]*?<\/(?:\w+:)?cellXfs>/;
-var fillsRegex = /<(?:\w+:)?fills([^>]*)>[\S\s]*?<\/(?:\w+:)?fills>/;
-var fontsRegex = /<(?:\w+:)?fonts([^>]*)>[\S\s]*?<\/(?:\w+:)?fonts>/;
-var bordersRegex = /<(?:\w+:)?borders([^>]*)>[\S\s]*?<\/(?:\w+:)?borders>/;
+var parse_sty_xml = (function make_pstyx() {
+  var numFmtRegex = /<numFmts([^>]*)>.*<\/numFmts>/;
+  var cellXfRegex = /<cellXfs([^>]*)>.*<\/cellXfs>/;
+  var fillsRegex = /<fills([^>]*)>.*<\/fills>/;
+  var bordersRegex = /<borders([^>]*)>.*<\/borders>/;
 
-return function parse_sty_xml(data, themes, opts) {
-	var styles = {};
-	if(!data) return styles;
-	data = data.replace(/<!--([\s\S]*?)-->/mg,"").replace(/<!DOCTYPE[^\[]*\[[^\]]*\]>/gm,"");
-	/* 18.8.39 styleSheet CT_Stylesheet */
-	var t;
+  return function parse_sty_xml(data, opts) {
+    /* 18.8.39 styleSheet CT_Stylesheet */
+    var t;
 
-	/* 18.8.31 numFmts CT_NumFmts ? */
-	if((t=data.match(numFmtRegex))) parse_numFmts(t, styles, opts);
+    /* numFmts CT_NumFmts ? */
+    if ((t = data.match(numFmtRegex))) parse_numFmts(t, opts);
 
-	/* 18.8.23 fonts CT_Fonts ? */
-	if((t=data.match(fontsRegex))) parse_fonts(t, styles, themes, opts);
+    /* fonts CT_Fonts ? */
+    if ((t = data.match(/<fonts([^>]*)>.*<\/fonts>/))) parse_fonts(t, opts)
 
-	/* 18.8.21 fills CT_Fills ? */
-	if((t=data.match(fillsRegex))) parse_fills(t, styles, themes, opts);
+    /* fills CT_Fills */
+    if ((t = data.match(fillsRegex))) parse_fills(t, opts);
 
-	/* 18.8.5  borders CT_Borders ? */
-	if((t=data.match(bordersRegex))) parse_borders(t, styles, themes, opts);
+    /* borders CT_Borders ? */
+    if ((t = data.match(bordersRegex))) parse_borders(t, opts);
+    /* cellStyleXfs CT_CellStyleXfs ? */
 
-	/* 18.8.9  cellStyleXfs CT_CellStyleXfs ? */
-	/* 18.8.8  cellStyles CT_CellStyles ? */
+    /* cellXfs CT_CellXfs ? */
+    if ((t = data.match(cellXfRegex))) parse_cellXfs(t, opts);
 
-	/* 18.8.10 cellXfs CT_CellXfs ? */
-	if((t=data.match(cellXfRegex))) parse_cellXfs(t, styles, opts);
+    /* dxfs CT_Dxfs ? */
+    /* tableStyles CT_TableStyles ? */
+    /* colors CT_Colors ? */
+    /* extLst CT_ExtensionList ? */
 
-	/* 18.8.15 dxfs CT_Dxfs ? */
-	/* 18.8.42 tableStyles CT_TableStyles ? */
-	/* 18.8.11 colors CT_Colors ? */
-	/* 18.2.10 extLst CT_ExtensionList ? */
-
-	return styles;
-};
+    return styles;
+  };
 })();
 
 var STYLES_XML_ROOT = writextag('styleSheet', null, {
-	'xmlns': XMLNS.main[0],
-	'xmlns:vt': XMLNS.vt
+  'xmlns': XMLNS.main[0],
+  'xmlns:vt': XMLNS.vt
 });
 
 RELS.STY = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles";
 
-function write_sty_xml(wb/*:Workbook*/, opts)/*:string*/ {
-	var o = [XML_HEADER, STYLES_XML_ROOT], w;
-	if(wb.SSF && (w = write_numFmts(wb.SSF)) != null) o[o.length] = w;
-	o[o.length] = ('<fonts count="1"><font><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>');
-	o[o.length] = ('<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>');
-	o[o.length] = ('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>');
-	o[o.length] = ('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
-	if((w = write_cellXfs(opts.cellXfs))) o[o.length] = (w);
-	o[o.length] = ('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');
-	o[o.length] = ('<dxfs count="0"/>');
-	o[o.length] = ('<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>');
+function write_sty_xml(wb, opts) {
 
-	if(o.length>2){ o[o.length] = ('</styleSheet>'); o[1]=o[1].replace("/>",">"); }
-	return o.join("");
+  if (typeof style_builder != 'undefined' && typeof 'require' != 'undefined') {
+    return style_builder.toXml();
+  }
+
+  var o = [XML_HEADER, STYLES_XML_ROOT], w;
+  if ((w = write_numFmts(wb.SSF)) != null) o[o.length] = w;
+  o[o.length] = ('<fonts count="1"><font><sz val="12"/><color theme="1"/><name val="Calibri"/><family val="2"/><scheme val="minor"/></font></fonts>');
+  o[o.length] = ('<fills count="2"><fill><patternFill patternType="none"/></fill><fill><patternFill patternType="gray125"/></fill></fills>');
+  o[o.length] = ('<borders count="1"><border><left/><right/><top/><bottom/><diagonal/></border></borders>');
+  o[o.length] = ('<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs>');
+  if ((w = write_cellXfs(opts.cellXfs))) o[o.length] = (w);
+  o[o.length] = ('<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles>');
+  o[o.length] = ('<dxfs count="0"/>');
+  o[o.length] = ('<tableStyles count="0" defaultTableStyle="TableStyleMedium9" defaultPivotStyle="PivotStyleMedium4"/>');
+
+  if (o.length > 2) {
+    o[o.length] = ('</styleSheet>');
+    o[1] = o[1].replace("/>", ">");
+  }
+  return o.join("");
 }
 RELS.THEME = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/theme";
 
@@ -6784,6 +5868,11 @@ function write_theme(Themes, opts)/*:string*/ {
 	o[o.length] =  '<a:extraClrSchemeLst/>';
 	o[o.length] = '</a:theme>';
 	return o.join("");
+}
+//function write_theme() { return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Cambria"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Times New Roman"/><a:font script="Hebr" typeface="Times New Roman"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="MoolBoran"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Times New Roman"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Arial"/><a:font script="Hebr" typeface="Arial"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="DaunPenh"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Arial"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="50000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="35000"><a:schemeClr val="phClr"><a:tint val="37000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="15000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="1"/></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="100000"/><a:shade val="100000"/><a:satMod val="130000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="50000"/><a:shade val="100000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"><a:shade val="95000"/><a:satMod val="105000"/></a:schemeClr></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="20000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst><a:scene3d><a:camera prst="orthographicFront"><a:rot lat="0" lon="0" rev="0"/></a:camera><a:lightRig rig="threePt" dir="t"><a:rot lat="0" lon="0" rev="1200000"/></a:lightRig></a:scene3d><a:sp3d><a:bevelT w="63500" h="25400"/></a:sp3d></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="40000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="40000"><a:schemeClr val="phClr"><a:tint val="45000"/><a:shade val="99000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="20000"/><a:satMod val="255000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="-80000" r="50000" b="180000"/></a:path></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="80000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="30000"/><a:satMod val="200000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults><a:spDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="1"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="3"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="2"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></a:style></a:spDef><a:lnDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="2"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="0"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="1"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="tx1"/></a:fontRef></a:style></a:lnDef></a:objectDefaults><a:extraClrSchemeLst/></a:theme>'; }
+function write_theme_from_master(opts) {
+  if (opts.themeXml) { return opts.themeXml; }
+  return '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n<a:theme xmlns:a="http://schemas.openxmlformats.org/drawingml/2006/main" name="Office Theme"><a:themeElements><a:clrScheme name="Office"><a:dk1><a:sysClr val="windowText" lastClr="000000"/></a:dk1><a:lt1><a:sysClr val="window" lastClr="FFFFFF"/></a:lt1><a:dk2><a:srgbClr val="1F497D"/></a:dk2><a:lt2><a:srgbClr val="EEECE1"/></a:lt2><a:accent1><a:srgbClr val="4F81BD"/></a:accent1><a:accent2><a:srgbClr val="C0504D"/></a:accent2><a:accent3><a:srgbClr val="9BBB59"/></a:accent3><a:accent4><a:srgbClr val="8064A2"/></a:accent4><a:accent5><a:srgbClr val="4BACC6"/></a:accent5><a:accent6><a:srgbClr val="F79646"/></a:accent6><a:hlink><a:srgbClr val="0000FF"/></a:hlink><a:folHlink><a:srgbClr val="800080"/></a:folHlink></a:clrScheme><a:fontScheme name="Office"><a:majorFont><a:latin typeface="Cambria"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Times New Roman"/><a:font script="Hebr" typeface="Times New Roman"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="MoolBoran"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Times New Roman"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:majorFont><a:minorFont><a:latin typeface="Calibri"/><a:ea typeface=""/><a:cs typeface=""/><a:font script="Jpan" typeface="ＭＳ Ｐゴシック"/><a:font script="Hang" typeface="맑은 고딕"/><a:font script="Hans" typeface="宋体"/><a:font script="Hant" typeface="新細明體"/><a:font script="Arab" typeface="Arial"/><a:font script="Hebr" typeface="Arial"/><a:font script="Thai" typeface="Tahoma"/><a:font script="Ethi" typeface="Nyala"/><a:font script="Beng" typeface="Vrinda"/><a:font script="Gujr" typeface="Shruti"/><a:font script="Khmr" typeface="DaunPenh"/><a:font script="Knda" typeface="Tunga"/><a:font script="Guru" typeface="Raavi"/><a:font script="Cans" typeface="Euphemia"/><a:font script="Cher" typeface="Plantagenet Cherokee"/><a:font script="Yiii" typeface="Microsoft Yi Baiti"/><a:font script="Tibt" typeface="Microsoft Himalaya"/><a:font script="Thaa" typeface="MV Boli"/><a:font script="Deva" typeface="Mangal"/><a:font script="Telu" typeface="Gautami"/><a:font script="Taml" typeface="Latha"/><a:font script="Syrc" typeface="Estrangelo Edessa"/><a:font script="Orya" typeface="Kalinga"/><a:font script="Mlym" typeface="Kartika"/><a:font script="Laoo" typeface="DokChampa"/><a:font script="Sinh" typeface="Iskoola Pota"/><a:font script="Mong" typeface="Mongolian Baiti"/><a:font script="Viet" typeface="Arial"/><a:font script="Uigh" typeface="Microsoft Uighur"/><a:font script="Geor" typeface="Sylfaen"/></a:minorFont></a:fontScheme><a:fmtScheme name="Office"><a:fillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="50000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="35000"><a:schemeClr val="phClr"><a:tint val="37000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="15000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="1"/></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="100000"/><a:shade val="100000"/><a:satMod val="130000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:tint val="50000"/><a:shade val="100000"/><a:satMod val="350000"/></a:schemeClr></a:gs></a:gsLst><a:lin ang="16200000" scaled="0"/></a:gradFill></a:fillStyleLst><a:lnStyleLst><a:ln w="9525" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"><a:shade val="95000"/><a:satMod val="105000"/></a:schemeClr></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="25400" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln><a:ln w="38100" cap="flat" cmpd="sng" algn="ctr"><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:prstDash val="solid"/></a:ln></a:lnStyleLst><a:effectStyleLst><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="20000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="38000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst></a:effectStyle><a:effectStyle><a:effectLst><a:outerShdw blurRad="40000" dist="23000" dir="5400000" rotWithShape="0"><a:srgbClr val="000000"><a:alpha val="35000"/></a:srgbClr></a:outerShdw></a:effectLst><a:scene3d><a:camera prst="orthographicFront"><a:rot lat="0" lon="0" rev="0"/></a:camera><a:lightRig rig="threePt" dir="t"><a:rot lat="0" lon="0" rev="1200000"/></a:lightRig></a:scene3d><a:sp3d><a:bevelT w="63500" h="25400"/></a:sp3d></a:effectStyle></a:effectStyleLst><a:bgFillStyleLst><a:solidFill><a:schemeClr val="phClr"/></a:solidFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="40000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="40000"><a:schemeClr val="phClr"><a:tint val="45000"/><a:shade val="99000"/><a:satMod val="350000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="20000"/><a:satMod val="255000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="-80000" r="50000" b="180000"/></a:path></a:gradFill><a:gradFill rotWithShape="1"><a:gsLst><a:gs pos="0"><a:schemeClr val="phClr"><a:tint val="80000"/><a:satMod val="300000"/></a:schemeClr></a:gs><a:gs pos="100000"><a:schemeClr val="phClr"><a:shade val="30000"/><a:satMod val="200000"/></a:schemeClr></a:gs></a:gsLst><a:path path="circle"><a:fillToRect l="50000" t="50000" r="50000" b="50000"/></a:path></a:gradFill></a:bgFillStyleLst></a:fmtScheme></a:themeElements><a:objectDefaults><a:spDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="1"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="3"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="2"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="lt1"/></a:fontRef></a:style></a:spDef><a:lnDef><a:spPr/><a:bodyPr/><a:lstStyle/><a:style><a:lnRef idx="2"><a:schemeClr val="accent1"/></a:lnRef><a:fillRef idx="0"><a:schemeClr val="accent1"/></a:fillRef><a:effectRef idx="1"><a:schemeClr val="accent1"/></a:effectRef><a:fontRef idx="minor"><a:schemeClr val="tx1"/></a:fontRef></a:style></a:lnDef></a:objectDefaults><a:extraClrSchemeLst/></a:theme>';
 }
 /* 18.14 Supplementary Workbook Data */
 function parse_xlink_xml(/*::data, rel, name:string, _opts*/) {
@@ -7151,31 +6240,61 @@ function default_margins(margins/*:Margins*/, mode/*:?string*/) {
 	if(margins.footer == null) margins.footer = defs[5];
 }
 
-function get_cell_style(styles/*:Array<any>*/, cell/*:Cell*/, opts) {
-	var z = opts.revssf[cell.z != null ? cell.z : "General"];
-	var i = 0x3c, len = styles.length;
-	if(z == null && opts.ssf) {
-		for(; i < 0x188; ++i) if(opts.ssf[i] == null) {
-			SSF.load(cell.z, i);
-			// $FlowIgnore
-			opts.ssf[i] = cell.z;
-			opts.revssf[cell.z] = z = i;
-			break;
-		}
-	}
-	for(i = 0; i != len; ++i) if(styles[i].numFmtId === z) return i;
-	styles[len] = {
-		numFmtId:z,
-		fontId:0,
-		fillId:0,
-		borderId:0,
-		xfId:0,
-		applyNumberFormat:1
-	};
-	return len;
+function get_cell_style(styles, cell, opts) {
+  if (typeof style_builder != 'undefined') {
+    if (/^\d+$/.exec(cell.s)) { return cell.s}  // if its already an integer index, let it be
+    if (cell.s && (cell.s == +cell.s)) { return cell.s}  // if its already an integer index, let it be
+    var s = cell.s || {};
+    if (cell.z) s.numFmt = cell.z;
+    return style_builder.addStyle(s);
+  }
+  else {
+    var z = opts.revssf[cell.z != null ? cell.z : "General"];
+    for(var i = 0, len = styles.length; i != len; ++i) if(styles[i].numFmtId === z) return i;
+    styles[len] = {
+      numFmtId:z,
+      fontId:0,
+      fillId:0,
+      borderId:0,
+      xfId:0,
+      applyNumberFormat:1
+    };
+    return len;
+  }
 }
 
-function safe_format(p/*:Cell*/, fmtid/*:number*/, fillid/*:?number*/, opts, themes, styles) {
+//p/*:Cell*/, fmtid/*:number*/, fillid/*:?number*/, opts, themes, styles
+function get_cell_style_csf(cellXf) {
+
+  if (cellXf) {
+
+    var s = {}
+
+    if (typeof cellXf.numFmtId != undefined)  {
+      s.numFmt = SSF._table[cellXf.numFmtId];
+    }
+
+    if(cellXf.fillId)  {
+      s.fill =  styles.Fills[cellXf.fillId];
+    }
+
+    if (cellXf.fontId) {
+      s.font = styles.Fonts[cellXf.fontId];
+    }
+    if (cellXf.borderId) {
+      s.border = styles.Borders[cellXf.borderId];
+    }
+    if (cellXf.applyAlignment==1) {
+      s.alignment = cellXf.alignment;
+    }
+
+
+    return JSON.parse(JSON.stringify(s));
+  }
+  return null;
+}
+
+function safe_format(p, fmtid, fillid, opts) {
 	try {
 		if(opts.cellNF) p.z = SSF._table[fmtid];
 	} catch(e) { if(opts.WTF) throw e; }
@@ -7320,6 +6439,16 @@ function write_ws_xml_merges(merges/*:Array<Range>*/)/*:string*/ {
 	return o + '</mergeCells>';
 }
 
+function write_ws_xml_pagesetup(setup) {
+  var pageSetup = writextag("pageSetup", null, {
+    scale: setup.scale || "100",
+    orientation: setup.orientation || "portrait",
+    horizontalDpi: setup.horizontalDpi || "4294967292",
+    verticalDpi: setup.verticalDpi || "4294967292",
+  });
+  console.log(pageSetup);
+  return pageSetup;
+}
 /* 18.3.1.82-3 sheetPr CT_ChartsheetPr / CT_SheetPr */
 function parse_ws_xml_sheetpr(sheetPr/*:string*/, s, wb/*:WBWBProps*/, idx/*:number*/) {
 	var data = parsexmltag(sheetPr);
@@ -7421,6 +6550,10 @@ function write_ws_xml_cols(ws, cols)/*:string*/ {
 	o[o.length] = "</cols>";
 	return o.join("");
 }
+
+function write_ws_xml_cell(cell, ref, ws, opts, idx, wb) {
+	if(cell.v === undefined && cell.s === undefined) return ""
+};
 
 function parse_ws_xml_autofilter(data/*:string*/) {
 	var o = { ref: (data.match(/ref="([^"]*)"/)||[])[1]};
@@ -7565,13 +6698,13 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 				tagc = idx;
 			} else ++tagc;
 			for(i = 0; i != x.length; ++i) if(x.charCodeAt(i) === 62) break; ++i;
-			tag = parsexmltag(x.slice(0,i), true);
+			tag = parsexmltag(x.substr(0,i), true);
 			if(!tag.r) tag.r = encode_cell({r:tagr-1, c:tagc});
-			d = x.slice(i);
+			d = x.substr(i);
 			p = ({t:""}/*:any*/);
 
-			if((cref=d.match(match_v))!= null && /*::cref != null && */cref[1] !== '') p.v=unescapexml(cref[1]);
-			if(opts.cellFormula) {
+			if((cref=d.match(match_v))!== null && cref[1] !== '') p.v=unescapexml(cref[1]);
+			if(opts.cellFormula && (cref=d.match(match_f))!== null) p.f=unescapexml(cref[1]); {
 				if((cref=d.match(match_f))!= null && /*::cref != null && */cref[1] !== '') {
 					/* TODO: match against XLSXFutureFunctions */
 					p.f=unescapexml(utf8read(cref[1]));
@@ -7598,7 +6731,7 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 							p.F = arrayf[i][1];
 			}
 
-			if(tag.t == null && p.v === undefined) {
+			if(tag.t == null && tag.s === undefined && p.v === undefined) {
 				if(p.f || p.F) {
 					p.v = 0; p.t = "n";
 				} else if(!opts.sheetStubs) continue;
@@ -7610,10 +6743,8 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 			/* 18.18.11 t ST_CellType */
 			switch(p.t) {
 				case 'n':
-					if(p.v == "" || p.v == null) {
-						if(!opts.sheetStubs) continue;
-						p.t = 'z';
-					} else p.v = parseFloat(p.v);
+					p.v = parseFloat(p.v);
+					if(isNaN(p.v)) p.v = "" // we don't want NaN if p.v is null
 					break;
 				case 's':
 					if(typeof p.v == 'undefined') {
@@ -7652,20 +6783,19 @@ return function parse_ws_xml_data(sdata/*:string*/, s, opts, guess/*:Range*/, th
 			/* formatting */
 			fmtid = fillid = 0;
 			cf = null;
+			if (opts.cellStyles) p.s = get_cell_style_csf(cf);
 			if(do_format && tag.s !== undefined) {
 				cf = styles.CellXf[tag.s];
 				if(cf != null) {
 					if(cf.numFmtId != null) fmtid = cf.numFmtId;
-					if(opts.cellStyles) {
-						if(cf.fillId != null) fillid = cf.fillId;
-					}
+					if (opts.cellStyles && cf.fillId != null) fillid = cf.fillId;
 				}
 			}
 			safe_format(p, fmtid, fillid, opts, themes, styles);
-			if(opts.cellDates && do_format && p.t == 'n' && SSF.is_date(SSF._table[fmtid])) { p.t = 'd'; p.v = numdate(p.v); }
-			if(dense) {
+			if (opts.cellDates && do_format && p.t == 'n' && SSF.is_date(SSF._table[fmtid])) { p.t = 'd'; p.v = numdate(p.v); }
+			if (dense) {
 				var _r = decode_cell(tag.r);
-				if(!s[_r.r]) s[_r.r] = [];
+				if (!s[_r.r]) s[_r.r] = [];
 				s[_r.r][_r.c] = p;
 			} else s[tag.r] = p;
 		}
@@ -7718,8 +6848,8 @@ function write_ws_xml_data(ws/*:Worksheet*/, opts, idx/*:number*/, wb/*:Workbook
 }
 
 var WS_XML_ROOT = writextag('worksheet', null, {
-	'xmlns': XMLNS.main[0],
-	'xmlns:r': XMLNS.r
+  'xmlns': XMLNS.main[0],
+  'xmlns:r': XMLNS.r
 });
 
 function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
@@ -7741,10 +6871,11 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 
 	write_ws_xml_sheetpr(ws, wb, idx, opts, o);
 
-	o[o.length] = (writextag('dimension', null, {'ref': ref}));
-
 	o[o.length] = write_ws_xml_sheetviews(ws, opts, idx, wb);
 
+	if (ws['!freeze']) {
+		pane = writextag('pane',null, ws['!freeze'])
+	}
 	/* TODO: store in WB, process styles */
 	if(opts.sheetFormat) o[o.length] = (writextag('sheetFormatPr', null, {
 		defaultRowHeight:opts.sheetFormat.defaultRowHeight||'16',
@@ -7754,6 +6885,22 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 
 	if(ws['!cols'] != null && ws['!cols'].length > 0) o[o.length] = (write_ws_xml_cols(ws, ws['!cols']));
 
+	o[o.length] = (writextag('dimension', null, {'ref': ref}));
+  var sheetView = writextag('sheetView', null,  {
+    showGridLines: opts.showGridLines == false ? '0' : '1',
+    tabSelected: opts.tabSelected === undefined ? '0' : opts.tabSelected,  // see issue #26, need to set WorkbookViews if this is set
+    workbookViewId: opts.workbookViewId === undefined ? '0' : opts.workbookViewId
+  });
+  o[o.length] = writextag('sheetViews', sheetView);
+
+  var sheetView = writextag('sheetView', null,  {
+    showGridLines: opts.showGridLines == false ? '0' : '1',
+    tabSelected: opts.tabSelected === undefined ? '0' :  opts.tabSelected,
+    workbookViewId: opts.workbookViewId === undefined ? '0' : opts.workbookViewId
+  });
+  o[o.length] = writextag('sheetViews', sheetView);
+
+	if(ws['!cols'] !== undefined && ws['!cols'].length > 0) o[o.length] = (write_ws_xml_cols(ws, ws['!cols']));
 	o[sidx = o.length] = '<sheetData/>';
 	ws['!links'] = [];
 	if(ws['!ref'] != null) {
@@ -7834,8 +6981,35 @@ function write_ws_xml(idx/*:number*/, opts, wb/*:Workbook*/, rels)/*:string*/ {
 	/* tableParts */
 	/* extLst */
 
-	if(o.length>1) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
+  if (ws['!rowBreaks'] !== undefined) o[o.length] =  write_ws_xml_row_breaks(ws['!rowBreaks'])
+  if (ws['!colBreaks'] !== undefined) o[o.length] =  write_ws_xml_col_breaks(ws['!colBreaks'])
+
+  if (ws['!pageSetup'] !== undefined) o[o.length] = write_ws_xml_pagesetup(ws['!pageSetup']);
+  if (ws['!rowBreaks'] !== undefined) o[o.length] = write_ws_xml_row_breaks(ws['!rowBreaks']);
+  if (ws['!colBreaks'] !== undefined) o[o.length] = write_ws_xml_col_breaks(ws['!colBreaks']);
+
+
+	if(o.length>2) { o[o.length] = ('</worksheet>'); o[1]=o[1].replace("/>",">"); }
 	return o.join("");
+}
+
+function write_ws_xml_row_breaks(breaks) {
+  var brk = [];
+  for (var i = 0; i < breaks.length; i++) {
+    var thisBreak = '' + (breaks[i]);
+    var nextBreak = '' + (breaks[i + 1] || '16383');
+    brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
+  }
+  return writextag('rowBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
+}
+function write_ws_xml_col_breaks(breaks) {
+  var brk = [];
+  for (var i = 0; i < breaks.length; i++) {
+    var thisBreak = '' + (breaks[i]);
+    var nextBreak = '' + (breaks[i + 1] || '1048575');
+    brk.push(writextag('brk', null, {id: thisBreak, max: nextBreak, man: '1'}))
+  }
+  return writextag('colBreaks', brk.join(' '), {count: brk.length, manualBreakCount: brk.length})
 }
 RELS.CHART = "http://schemas.openxmlformats.org/officeDocument/2006/relationships/chart";
 RELS.CHARTEX = "http://schemas.microsoft.com/office/2014/relationships/chartEx";
@@ -8831,9 +8005,13 @@ function parse_zip(zip/*:ZIP*/, opts/*:?ParseOpts*/)/*:Workbook*/ {
 		strs = [];
 		if(dir.sst) try { strs=parse_sst(getzipdata(zip, strip_front_slash(dir.sst)), dir.sst, opts); } catch(e) { if(opts.WTF) throw e; }
 
-		if(opts.cellStyles && dir.themes.length) themes = parse_theme(getzipstr(zip, dir.themes[0].replace(/^\//,''), true)||"",dir.themes[0], opts);
+    // parse themes before styles so that we can reliably decode theme/tint into rgb when parsing styles
+    themes = {};
+    if(opts.cellStyles && dir.themes.length) themes = parse_theme(getzipdata(zip, dir.themes[0].replace(/^\//,''), true),dir.themes[0], opts);
 
-		if(dir.style) styles = parse_sty(getzipdata(zip, strip_front_slash(dir.style)), dir.style, themes, opts);
+    styles = {};
+		if(dir.style) styles = parse_sty(getzipdata(zip, dir.style.replace(/^\//,'')),dir.style, opts);
+
 	}
 
 	/*var externbooks = */dir.links.map(function(link) {
@@ -9101,7 +8279,8 @@ function write_zip(wb/*:Workbook*/, opts/*:WriteOpts*/)/*:ZIP*/ {
 	/* TODO: something more intelligent with themes */
 
 	f = "xl/theme/theme1.xml";
-	zip_add_file(zip, f, write_theme(wb.Themes, opts));
+	//zip_add_file(zip, f, write_theme(wb.Themes, opts));
+    zip.file(f, write_theme(opts));
 	ct.themes.push(f);
 	add_rels(opts.wbrels, -1, "theme/theme1.xml", RELS.THEME);
 
@@ -9231,6 +8410,14 @@ function readFileSync(filename/*:string*/, opts/*:?ParseOpts*/)/*:Workbook*/ {
 	var o = opts||{}; o.type = 'file';
 	return readSync(filename, o);
 }
+
+/* master of sheetjs*/
+function readFileSync(data, opts) {
+	var o = opts || {}; o.type = 'file'
+	var wb = readSync(data, o);
+	wb.FILENAME = data;
+	return wb;
+}
 function write_cfb_ctr(cfb/*:CFBContainer*/, o/*:WriteOpts*/)/*:any*/ {
 	switch(o.type) {
 		case "base64": case "binary": break;
@@ -9245,16 +8432,14 @@ function write_cfb_ctr(cfb/*:CFBContainer*/, o/*:WriteOpts*/)/*:any*/ {
 /*:: declare var encrypt_agile:any; */
 function write_zip_type(wb/*:Workbook*/, opts/*:?WriteOpts*/)/*:any*/ {
 	var o = opts||{};
-	var z = write_zip(wb, o);
-	var oopts = {};
-	if(o.compression) oopts.compression = 'DEFLATE';
-	if(o.password) oopts.type = has_buf ? "nodebuffer" : "string";
-	else switch(o.type) {
-		case "base64": oopts.type = "base64"; break;
-		case "binary": oopts.type = "string"; break;
-		case "string": throw new Error("'string' output type invalid for '" + o.bookType + "' files");
-		case "buffer":
-		case "file": oopts.type = has_buf ? "nodebuffer" : "string"; break;
+  style_builder  = new StyleBuilder(opts);
+
+  var z = write_zip(wb, o);
+	switch(o.type) {
+		case "base64": return z.generate({type:"base64"});
+		case "binary": return z.generate({type:"string"});
+		case "buffer": return z.generate({type:"nodebuffer"});
+		case "file": return _fs.writeFileSync(o.file, z.generate({type:"nodebuffer"}));
 		default: throw new Error("Unrecognized type " + o.type);
 	}
 	var out = z.FullPaths ? CFB.write(z, {fileType:"zip", type: /*::(*/{"nodebuffer": "buffer", "string": "binary"}/*:: :any)*/[oopts.type] || oopts.type}) : z.generate(oopts);
@@ -9370,6 +8555,7 @@ function resolve_book_type(o/*:WriteFileOpts*/) {
 
 function writeFileSync(wb/*:Workbook*/, filename/*:string*/, opts/*:?WriteFileOpts*/) {
 	var o = opts||{}; o.type = 'file';
+
 	o.file = filename;
 	resolve_book_type(o);
 	return writeSync(wb, o);
@@ -9654,6 +8840,9 @@ var utils/*:any*/ = {
 	sheet_to_formulae: sheet_to_formulae,
 	sheet_to_row_object_array: sheet_to_json
 };
+
+
+
 
 (function(utils) {
 utils.consts = utils.consts || {};
